@@ -1,0 +1,36 @@
+﻿@{
+    ViewData["Title"] = "Staff Panel";
+}
+
+<h2 class="mb-4">Staff Panel</h2>
+
+<div class="row g-3">
+    <div class="col-md-3">
+        <div class="card text-bg-warning">
+            <div class="card-body">
+                <h6>Pending orders</h6><h3>@ViewBag.PendingOrders</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-bg-info">
+            <div class="card-body">
+                <h6>Processing orders</h6><h3>@ViewBag.ProcessingOrders</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-bg-danger">
+            <div class="card-body">
+                <h6>Low-stock variants</h6><h3>@ViewBag.LowStock</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-bg-primary">
+            <div class="card-body">
+                <h6>Products</h6><h3>@ViewBag.ProductCount</h3>
+            </div>
+        </div>
+    </div>
+</div>

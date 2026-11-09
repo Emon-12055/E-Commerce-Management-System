@@ -1,0 +1,21 @@
+﻿@model ECommerceManagementSystem.Models.ApplicationUser
+@{
+    ViewData["Title"] = "My profile";
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card shadow-sm">
+            <div class="card-body p-4">
+                <h3 class="mb-4">My profile</h3>
+                <table class="table">
+                    <tr><th>Name</th><td>@Model.FullName</td></tr>
+                    <tr><th>Email</th><td>@Model.Email</td></tr>
+                    <tr><th>Phone</th><td>@(Model.PhoneNumber ?? "-")</td></tr>
+                    <tr><th>Role</th><td>@ViewBag.Roles</td></tr>
+                    <tr><th>Member since</th><td>@Model.CreatedAt.ToLocalTime().ToString("dd MMM yyyy")</td></tr>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

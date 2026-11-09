@@ -1,0 +1,49 @@
+﻿@{
+    ViewData["Title"] = "Admin Dashboard";
+}
+
+<h2 class="mb-4">Admin Dashboard</h2>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-4 col-lg">
+        <div class="card text-bg-primary">
+            <div class="card-body">
+                <h6>Products</h6><h3>@ViewBag.ProductCount</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 col-lg">
+        <div class="card text-bg-secondary">
+            <div class="card-body">
+                <h6>Categories</h6><h3>@ViewBag.CategoryCount</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 col-lg">
+        <div class="card text-bg-success">
+            <div class="card-body">
+                <h6>Orders</h6><h3>@ViewBag.OrderCount</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg">
+        <div class="card text-bg-info">
+            <div class="card-body">
+                <h6>Customers</h6><h3>@ViewBag.CustomerCount</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg">
+        <div class="card text-bg-warning">
+            <div class="card-body">
+                <h6>Staff</h6><h3>@ViewBag.StaffCount</h3>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="d-flex gap-2">
+    <a asp-action="Users" class="btn btn-outline-primary">Manage users</a>
+    <a asp-action="CreateStaff" class="btn btn-primary">+ Add staff</a>
+    <a asp-controller="Staff" asp-action="Index" class="btn btn-outline-secondary">Staff panel</a>
+</div>
