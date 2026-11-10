@@ -1,0 +1,92 @@
+using System.ComponentModel.DataAnnotations;
+using ECommerceManagementSystem.Models;
+using Microsoft.AspNetCore.Mvc.Rendering;
+
+namespace ECommerceManagementSystem.ViewModels
+{
+    // ---------- Dashboard ----------
+    public class DashboardViewModel
+    {
+        public int TotalProducts { get; set; }
+        public int ActiveProducts { get; set; }
+        public int TotalCategories { get; set; }
+        public int TotalOrders { get; set; }
+        public int TotalStaff { get; set; }
+        public int TotalCustomers { get; set; }
+        public int LowStockThreshold { get; set; }
+        public List<ProductVariant> LowStockItems { get; set; } = new();
+    }
+
+    // ---------- Categories ----------
+    public class CategoryFormViewModel
+    {
+        public int Id { get; set; }
+
+        [Required, StringLength(100)]
+        public string Name { get; set; } = string.Empty;
+
+        [StringLength(500)]
+        public string? Description { get; set; }
+
+        // Display only (Index page)
+        public int ProductCount { get; set; }
+    }
+
+    // ---------- Products ----------
+    public class ProductListItemViewModel
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string CategoryName { get; set; } = string.Empty;
+        public decimal Price { get; set; }
+        public bool IsActive { get; set; }
+        public string? MainImageUrl { get; set; }
+        public int TotalStock { get; set; }
+        public int VariantCount { get; set; }
+    }
+
+    public class ProductFormViewModel
+    {
+        public int Id { get; set; }
+
+        [Required, StringLength(150)]
+        public string Name { get; set; } = string.Empty;
+
+        [StringLength(2000)]
+        public string? Description { get; set; }
+
+        [Required, Range(0.01, 10000000, ErrorMessage = "Price must be greater than 0.")]
+        public decimal Price { get; set; }
+
+        [Required(ErrorMessage = "Please choose a category.")]
+        [Display(Name = "Category")]
+        public int? CategoryId { get; set; }
+
+        [Display(Name = "Active (visible in the shop)")]
+        public bool IsActive { get; set; } = true;
+
+        [Display(Name = "Upload images")]
+        public List<IFormFile> NewImages { get; set; } = new();
+
+        // Filled by the controller, not posted by the form
+        public IEnumerable<SelectListItem> Categories { get; set; } = Enumerable.Empty<SelectListItem>();
+        public List<ProductImage> ExistingImages { get; set; } = new();
+        public List<ProductVariant> Variants { get; set; } = new();
+    }
+
+    public class VariantFormViewModel
+    {
+        [Required]
+        public int ProductId { get; set; }
+
+        [Required, StringLength(20)]
+        public string Size { get; set; } = string.Empty;
+
+        [Required, StringLength(30)]
+        public string Color { get; set; } = string.Empty;
+
+        [Range(0, 100000)]
+        [Display(Name = "Stock")]
+        public int StockQuantity { get; set; }
+    }
+}

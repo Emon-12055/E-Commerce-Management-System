@@ -1,0 +1,65 @@
+@model List<ProductVariant>
+@{
+    ViewData["Title"] = "Inventory";
+    int threshold = ViewBag.Threshold;
+    bool lowOnly = ViewBag.LowOnly;
+    string? search = ViewBag.Search;
+}
+
+<h1 class="h3 mb-3">Inventory / Stock</h1>
+
+<form method="get" class="row g-2 mb-3 align-items-center">
+    <div class="col-md-5">
+        <input type="text" name="search" value="@search" class="form-control" placeholder="Search product, size or color..." />
+    </div>
+    <div class="col-md-3">
+        <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="lowOnly" value="true" id="lowOnly" checked="@lowOnly" />
+            <label class="form-check-label" for="lowOnly">Only low stock (≤ @threshold)</label>
+        </div>
+    </div>
+    <div class="col-md-4 d-flex gap-2">
+        <button type="submit" class="btn btn-outline-primary">Filter</button>
+        <a asp-action="Index" class="btn btn-outline-secondary">Clear</a>
+    </div>
+</form>
+
+<div class="card shadow-sm">
+    @if (!Model.Any())
+    {
+        <div class="card-body text-muted">No variants found. Add sizes and colors from a product's Edit page.</div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table mb-0 align-middle">
+                <thead class="table-light">
+                    <tr><th>Product</th><th>Size</th><th>Color</th><th class="text-center">Current</th><th style="width:260px">Set new stock</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var v in Model)
+                    {
+                        var badge = v.StockQuantity == 0 ? "bg-danger"
+                                  : v.StockQuantity <= threshold ? "bg-warning text-dark"
+                                  : "bg-success";
+                        <tr>
+                            <td class="fw-semibold">@v.Product?.Name</td>
+                            <td>@v.Size</td>
+                            <td>@v.Color</td>
+                            <td class="text-center"><span class="badge @badge">@v.StockQuantity</span></td>
+                            <td>
+                                <form asp-action="Update" method="post" class="d-flex gap-2">
+                                    <input type="hidden" name="variantId" value="@v.Id" />
+                                    <input type="hidden" name="search" value="@search" />
+                                    <input type="hidden" name="lowOnly" value="@lowOnly.ToString().ToLower()" />
+                                    <input type="number" name="quantity" min="0" value="@v.StockQuantity" class="form-control form-control-sm" required />
+                                    <button type="submit" class="btn btn-sm btn-primary">Save</button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

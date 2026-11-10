@@ -1,0 +1,37 @@
+@model CategoryFormViewModel
+@{
+    bool isEdit = Model.Id != 0;
+    ViewData["Title"] = isEdit ? "Edit category" : "Add category";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3 mb-0">@ViewData["Title"]</h1>
+    <a asp-action="Index" class="btn btn-outline-secondary">Back to list</a>
+</div>
+
+<div class="card shadow-sm" style="max-width:640px">
+    <div class="card-body">
+        <form asp-action="@(isEdit ? "Edit" : "Create")" asp-route-id="@(isEdit ? Model.Id.ToString() : null)" method="post">
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
+            <input type="hidden" asp-for="Id" />
+
+            <div class="mb-3">
+                <label asp-for="Name" class="form-label"></label>
+                <input asp-for="Name" class="form-control" autofocus />
+                <span asp-validation-for="Name" class="text-danger small"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Description" class="form-label"></label>
+                <textarea asp-for="Description" class="form-control" rows="3"></textarea>
+                <span asp-validation-for="Description" class="text-danger small"></span>
+            </div>
+
+            <button type="submit" class="btn btn-primary">@(isEdit ? "Save changes" : "Create category")</button>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

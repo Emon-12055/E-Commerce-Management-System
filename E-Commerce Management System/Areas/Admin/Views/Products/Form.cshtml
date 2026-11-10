@@ -1,0 +1,169 @@
+@model ProductFormViewModel
+@{
+    bool isEdit = Model.Id != 0;
+    ViewData["Title"] = isEdit ? $"Edit: {Model.Name}" : "Add product";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3 mb-0">@ViewData["Title"]</h1>
+    <a asp-action="Index" class="btn btn-outline-secondary">Back to list</a>
+</div>
+
+@* ---------- 1. Product details + image upload ---------- *@
+<div class="card shadow-sm mb-4">
+    <div class="card-header bg-white"><strong>Product details</strong></div>
+    <div class="card-body">
+        <form asp-action="@(isEdit ? "Edit" : "Create")" asp-route-id="@(isEdit ? Model.Id.ToString() : null)"
+              method="post" enctype="multipart/form-data">
+            <div asp-validation-summary="All" class="text-danger mb-2"></div>
+            <input type="hidden" asp-for="Id" />
+
+            <div class="row g-3">
+                <div class="col-md-8">
+                    <label asp-for="Name" class="form-label"></label>
+                    <input asp-for="Name" class="form-control" />
+                    <span asp-validation-for="Name" class="text-danger small"></span>
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="Price" class="form-label">Price (৳)</label>
+                    <input asp-for="Price" class="form-control" step="0.01" min="0" />
+                    <span asp-validation-for="Price" class="text-danger small"></span>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="CategoryId" class="form-label"></label>
+                    <select asp-for="CategoryId" asp-items="Model.Categories" class="form-select">
+                        <option value="">-- Select category --</option>
+                    </select>
+                    <span asp-validation-for="CategoryId" class="text-danger small"></span>
+                    @if (!Model.Categories.Any())
+                    {
+                        <div class="small text-warning mt-1">
+                            No categories yet. <a asp-controller="Categories" asp-action="Create">Create one first</a>.
+                        </div>
+                    }
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="NewImages" class="form-label"></label>
+                    <input asp-for="NewImages" type="file" class="form-control" multiple accept="image/*" />
+                    <div class="form-text">JPG, PNG, WEBP or GIF, up to 5 MB each. You can select several.</div>
+                </div>
+                <div class="col-12">
+                    <label asp-for="Description" class="form-label"></label>
+                    <textarea asp-for="Description" class="form-control" rows="4"></textarea>
+                    <span asp-validation-for="Description" class="text-danger small"></span>
+                </div>
+                <div class="col-12">
+                    <div class="form-check">
+                        <input asp-for="IsActive" class="form-check-input" />
+                        <label asp-for="IsActive" class="form-check-label"></label>
+                    </div>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary mt-3">@(isEdit ? "Save changes" : "Create product")</button>
+        </form>
+    </div>
+</div>
+
+@if (isEdit)
+{
+    @* ---------- 2. Images ---------- *@
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-white"><strong>Images</strong></div>
+        <div class="card-body">
+            @if (!Model.ExistingImages.Any())
+            {
+                <p class="text-muted mb-0">No images yet. Upload some using the form above.</p>
+            }
+            else
+            {
+                <div class="row g-3">
+                    @foreach (var img in Model.ExistingImages)
+                    {
+                        <div class="col-6 col-md-3 col-xl-2">
+                            <div class="border rounded p-2 h-100 @(img.IsMain ? "border-primary border-2" : "")">
+                                <img src="@img.ImageUrl" class="w-100 rounded mb-2" style="aspect-ratio:1/1;object-fit:cover" alt="" />
+                                @if (img.IsMain)
+                                {
+                                    <span class="badge bg-primary w-100 mb-1">Main image</span>
+                                }
+                                else
+                                {
+                                    <form asp-action="SetMainImage" method="post" class="mb-1">
+                                        <input type="hidden" name="imageId" value="@img.Id" />
+                                        <button type="submit" class="btn btn-sm btn-outline-primary w-100">Make main</button>
+                                    </form>
+                                }
+                                <form asp-action="DeleteImage" method="post" onsubmit="return confirm('Delete this image?');">
+                                    <input type="hidden" name="imageId" value="@img.Id" />
+                                    <button type="submit" class="btn btn-sm btn-outline-danger w-100">Delete</button>
+                                </form>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+
+    @* ---------- 3. Variants (size / color / stock) ---------- *@
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <strong>Sizes, colors and stock</strong>
+            <a asp-controller="Inventory" asp-action="Index" asp-route-search="@Model.Name" class="btn btn-sm btn-outline-secondary">Edit stock in Inventory</a>
+        </div>
+        <div class="card-body">
+            <form asp-action="AddVariant" method="post" class="row g-2 align-items-end mb-3">
+                <input type="hidden" name="ProductId" value="@Model.Id" />
+                <div class="col-md-3">
+                    <label class="form-label small">Size</label>
+                    <input name="Size" class="form-control" placeholder="S, M, L, 42..." required maxlength="20" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small">Color</label>
+                    <input name="Color" class="form-control" placeholder="Black, Red..." required maxlength="30" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small">Stock</label>
+                    <input name="StockQuantity" type="number" min="0" value="0" class="form-control" required />
+                </div>
+                <div class="col-md-3">
+                    <button type="submit" class="btn btn-success w-100">+ Add variant</button>
+                </div>
+            </form>
+
+            @if (!Model.Variants.Any())
+            {
+                <p class="text-muted mb-0">No variants yet. Customers need at least one size/color to buy this product.</p>
+            }
+            else
+            {
+                <table class="table align-middle mb-0">
+                    <thead class="table-light"><tr><th>Size</th><th>Color</th><th class="text-center">Stock</th><th class="text-end"></th></tr></thead>
+                    <tbody>
+                        @foreach (var v in Model.Variants)
+                        {
+                            <tr>
+                                <td>@v.Size</td>
+                                <td>@v.Color</td>
+                                <td class="text-center">
+                                    <span class="badge @(v.StockQuantity == 0 ? "bg-danger" : "bg-secondary")">@v.StockQuantity</span>
+                                </td>
+                                <td class="text-end">
+                                    <form asp-action="DeleteVariant" method="post" class="d-inline" onsubmit="return confirm('Delete this variant?');">
+                                        <input type="hidden" name="variantId" value="@v.Id" />
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+    </div>
+}
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

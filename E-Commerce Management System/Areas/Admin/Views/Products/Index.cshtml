@@ -1,0 +1,87 @@
+@model List<ProductListItemViewModel>
+@{
+    ViewData["Title"] = "Products";
+    var categories = (List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>)ViewBag.Categories;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3 mb-0">Products</h1>
+    <a asp-action="Create" class="btn btn-primary">+ Add product</a>
+</div>
+
+<form method="get" class="row g-2 mb-3">
+    <div class="col-md-5">
+        <input type="text" name="search" value="@ViewBag.Search" class="form-control" placeholder="Search by name..." />
+    </div>
+    <div class="col-md-4">
+        <select name="categoryId" class="form-select" asp-items="categories">
+            <option value="">All categories</option>
+        </select>
+    </div>
+    <div class="col-md-3 d-flex gap-2">
+        <button type="submit" class="btn btn-outline-primary">Filter</button>
+        <a asp-action="Index" class="btn btn-outline-secondary">Clear</a>
+    </div>
+</form>
+
+<div class="card shadow-sm">
+    @if (!Model.Any())
+    {
+        <div class="card-body text-muted">No products found.</div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table mb-0 align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th></th><th>Name</th><th>Category</th><th class="text-end">Price</th>
+                        <th class="text-center">Variants</th><th class="text-center">Stock</th>
+                        <th class="text-center">Status</th><th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var p in Model)
+                    {
+                        <tr>
+                            <td>
+                                @if (p.MainImageUrl != null)
+                                {
+                                    <img src="@p.MainImageUrl" alt="@p.Name" class="thumb" />
+                                }
+                                else
+                                {
+                                    <div class="thumb"></div>
+                                }
+                            </td>
+                            <td class="fw-semibold">@p.Name</td>
+                            <td>@p.CategoryName</td>
+                            <td class="text-end">৳ @p.Price.ToString("N2")</td>
+                            <td class="text-center">@p.VariantCount</td>
+                            <td class="text-center">
+                                <span class="badge @(p.TotalStock == 0 ? "bg-danger" : "bg-secondary")">@p.TotalStock</span>
+                            </td>
+                            <td class="text-center">
+                                @if (p.IsActive)
+                                {
+                                    <span class="badge bg-success">Active</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-light text-dark border">Hidden</span>
+                                }
+                            </td>
+                            <td class="text-end text-nowrap">
+                                <a asp-action="Edit" asp-route-id="@p.Id" class="btn btn-sm btn-outline-secondary">Edit</a>
+                                <form asp-action="Delete" asp-route-id="@p.Id" method="post" class="d-inline"
+                                      onsubmit="return confirm('Delete this product?');">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

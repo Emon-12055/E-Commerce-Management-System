@@ -1,12 +1,14 @@
+using ECommerceManagementSystem.Services;
 using ECommerceManagementSystem.Data;
 using ECommerceManagementSystem.Models;
+          // ← Phase 4: নতুন
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // ----- Database
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")   // <-- your connection string name
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
@@ -43,6 +45,9 @@ builder.Services.ConfigureApplicationCookie(options =>
 builder.Services.AddControllersWithViews();
 builder.Services.AddRazorPages();
 
+// ----- Phase 4: product image upload service
+builder.Services.AddScoped<IImageStorageService, ImageStorageService>();
+
 var app = builder.Build();
 
 // ----- Create roles, admin user and sample data
@@ -59,8 +64,13 @@ app.UseStaticFiles();
 
 app.UseRouting();
 
-app.UseAuthentication();   // must be before UseAuthorization
+app.UseAuthentication();
 app.UseAuthorization();
+
+// ----- Phase 4: Admin area route (must be BEFORE the default route)
+app.MapControllerRoute(
+    name: "areas",
+    pattern: "{area:exists}/{controller=Dashboard}/{action=Index}/{id?}");
 
 app.MapControllerRoute(
     name: "default",

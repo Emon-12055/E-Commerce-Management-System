@@ -1,0 +1,72 @@
+@{
+    var current = ViewContext.RouteData.Values["controller"]?.ToString();
+    string Active(string name) => current == name ? "active" : "";
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Admin Panel</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <style>
+        .admin-sidebar { width: 240px; min-height: 100vh; }
+        .admin-sidebar .nav-link { color: #c9d1d9; border-radius: 6px; }
+        .admin-sidebar .nav-link:hover { color: #fff; background: rgba(255,255,255,.08); }
+        .admin-sidebar .nav-link.active { color: #fff; background: #0d6efd; }
+        .thumb { width: 56px; height: 56px; object-fit: cover; border-radius: 6px; background: #e9ecef; }
+        .stat-card .display-6 { font-weight: 600; }
+    </style>
+</head>
+<body class="bg-light">
+    <div class="d-flex">
+        <nav class="admin-sidebar bg-dark p-3 flex-shrink-0">
+            <a class="d-block text-white fs-5 fw-semibold mb-1 text-decoration-none"
+               asp-area="Admin" asp-controller="Dashboard" asp-action="Index">Admin Panel</a>
+            <div class="small text-secondary mb-4">@User.Identity?.Name</div>
+
+            <ul class="nav flex-column gap-1">
+                <li><a class="nav-link @Active("Dashboard")" asp-area="Admin" asp-controller="Dashboard" asp-action="Index">Dashboard</a></li>
+
+                @if (User.IsInRole("Admin"))
+                {
+                    <li><a class="nav-link @Active("Products")" asp-area="Admin" asp-controller="Products" asp-action="Index">Products</a></li>
+                    <li><a class="nav-link @Active("Categories")" asp-area="Admin" asp-controller="Categories" asp-action="Index">Categories</a></li>
+                }
+
+                <li><a class="nav-link @Active("Inventory")" asp-area="Admin" asp-controller="Inventory" asp-action="Index">Inventory / Stock</a></li>
+
+                @if (User.IsInRole("Admin"))
+                {
+                    @* Staff management was built in Phase 3 (StaffController, outside the Admin area) *@
+                    <li><a class="nav-link @Active("Staff")" asp-area="" asp-controller="Staff" asp-action="Index">Staff accounts</a></li>
+                }
+            </ul>
+
+            <hr class="border-secondary" />
+            <a class="nav-link text-secondary small px-0" asp-area="" asp-controller="Home" asp-action="Index">&larr; Back to shop</a>
+        </nav>
+
+        <main class="flex-grow-1 p-4" style="min-width:0">
+            @if (TempData["Success"] is string ok)
+            {
+                <div class="alert alert-success alert-dismissible fade show">@ok<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+            }
+            @if (TempData["Warning"] is string warn)
+            {
+                <div class="alert alert-warning alert-dismissible fade show">@warn<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+            }
+            @if (TempData["Error"] is string err)
+            {
+                <div class="alert alert-danger alert-dismissible fade show">@err<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+            }
+
+            @RenderBody()
+        </main>
+    </div>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>
