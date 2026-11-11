@@ -1,0 +1,148 @@
+@model ECommerceManagementSystem.ViewModels.ShopIndexViewModel
+@using Microsoft.AspNetCore.Mvc.Rendering
+@{
+    ViewData["Title"] = "Shop";
+    var categoryItems = Model.Categories.Select(c => new SelectListItem(c.Name, c.Id.ToString(), Model.CategoryId == c.Id));
+    var sizeItems = Model.Sizes.Select(s => new SelectListItem(s, s, Model.Size == s));
+    var colorItems = Model.Colors.Select(c => new SelectListItem(c, c, Model.Color == c));
+    var sortOptions = new Dictionary<string, string>
+    {
+        ["newest"] = "Newest",
+        ["price_asc"] = "Price: low to high",
+        ["price_desc"] = "Price: high to low",
+        ["name"] = "Name A-Z"
+    };
+}
+
+<link rel="stylesheet" href="~/css/shop.css" asp-append-version="true" />
+
+<div class="row g-4">
+    @* ---------- Filter sidebar ---------- *@
+    <aside class="col-lg-3">
+        <form method="get" asp-action="Index" id="filterForm" class="card border-0 shadow-sm">
+            <div class="card-body">
+                <h2 class="h6 fw-bold mb-3">Filter</h2>
+
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold">Search</label>
+                    <input type="text" name="search" value="@Model.Search" class="form-control" placeholder="Name, brand..." />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold">Category</label>
+                    <select name="categoryId" class="form-select" asp-items="categoryItems">
+                        <option value="">All categories</option>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold">Price (৳)</label>
+                    <div class="d-flex gap-2">
+                        <input type="number" name="minPrice" value="@Model.MinPrice" min="0" class="form-control" placeholder="Min" />
+                        <input type="number" name="maxPrice" value="@Model.MaxPrice" min="0" class="form-control" placeholder="Max" />
+                    </div>
+                </div>
+
+                @if (Model.Sizes.Any())
+                {
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Size</label>
+                        <select name="size" class="form-select" asp-items="sizeItems">
+                            <option value="">Any size</option>
+                        </select>
+                    </div>
+                }
+
+                @if (Model.Colors.Any())
+                {
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Color</label>
+                        <select name="color" class="form-select" asp-items="colorItems">
+                            <option value="">Any color</option>
+                        </select>
+                    </div>
+                }
+
+                <div class="form-check mb-3">
+                    <input class="form-check-input" type="checkbox" name="inStockOnly" value="true" id="inStockOnly" checked="@Model.InStockOnly" />
+                    <label class="form-check-label" for="inStockOnly">In stock only</label>
+                </div>
+
+                <input type="hidden" name="sort" value="@Model.Sort" />
+
+                <div class="d-grid gap-2">
+                    <button type="submit" class="btn btn-dark">Apply filters</button>
+                    <a asp-action="Index" class="btn btn-outline-secondary">Clear</a>
+                </div>
+            </div>
+        </form>
+    </aside>
+
+    @* ---------- Product grid ---------- *@
+    <section class="col-lg-9">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+            <div>
+                <h1 class="h4 mb-0">
+                    @(string.IsNullOrWhiteSpace(Model.Search) ? "All products" : $"Results for \"{Model.Search}\"")
+                </h1>
+                <div class="small text-muted">@Model.TotalCount product(s)</div>
+            </div>
+
+            <div class="d-flex align-items-center gap-2">
+                <label for="sortSelect" class="small text-muted text-nowrap">Sort by</label>
+                <select id="sortSelect" class="form-select form-select-sm" style="width:auto"
+                        asp-items="sortOptions.Select(o => new SelectListItem(o.Value, o.Key, Model.Sort == o.Key))">
+                </select>
+            </div>
+        </div>
+
+        @if (!Model.Products.Any())
+        {
+            <div class="text-center py-5 bg-white rounded-3 shadow-sm">
+                <p class="fs-5 mb-2">No products found</p>
+                <p class="text-muted">Try a different search or remove some filters.</p>
+                <a asp-action="Index" class="btn btn-dark">See all products</a>
+            </div>
+        }
+        else
+        {
+            <div class="row row-cols-2 row-cols-md-3 g-3">
+                @foreach (var p in Model.Products)
+                {
+                    <div class="col"><partial name="_ProductCard" model="p" /></div>
+                }
+            </div>
+
+            @if (Model.TotalPages > 1)
+            {
+                <nav class="mt-4">
+                    <ul class="pagination justify-content-center">
+                        <li class="page-item @(Model.Page == 1 ? "disabled" : "")">
+                            <a class="page-link" asp-action="Index" asp-all-route-data="Model.RouteFor(Model.Page - 1)">Previous</a>
+                        </li>
+                        @for (int i = 1; i <= Model.TotalPages; i++)
+                        {
+                            <li class="page-item @(i == Model.Page ? "active" : "")">
+                                <a class="page-link" asp-action="Index" asp-all-route-data="Model.RouteFor(i)">@i</a>
+                            </li>
+                        }
+                        <li class="page-item @(Model.Page == Model.TotalPages ? "disabled" : "")">
+                            <a class="page-link" asp-action="Index" asp-all-route-data="Model.RouteFor(Model.Page + 1)">Next</a>
+                        </li>
+                    </ul>
+                </nav>
+            }
+        }
+    </section>
+</div>
+
+@section Scripts {
+    <script>
+        // Changing "Sort by" re-submits the filter form with the new sort
+        document.getElementById('sortSelect').addEventListener('change', function () {
+            const form = document.getElementById('filterForm');
+            form.querySelector('input[name="sort"]').value = this.value;
+            form.submit();
+        });
+    </script>
+}

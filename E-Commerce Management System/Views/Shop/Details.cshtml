@@ -1,0 +1,199 @@
+@model ECommerceManagementSystem.ViewModels.ProductDetailsViewModel
+@{
+    var p = Model.Product;
+    ViewData["Title"] = p.Name;
+    var mainImage = Model.Images.FirstOrDefault()?.ImageUrl;
+    bool onSale = p.CompareAtPrice.HasValue && p.CompareAtPrice > p.BasePrice;
+}
+
+<link rel="stylesheet" href="~/css/shop.css" asp-append-version="true" />
+
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb small">
+        <li class="breadcrumb-item"><a asp-controller="Home" asp-action="Index">Home</a></li>
+        <li class="breadcrumb-item"><a asp-controller="Shop" asp-action="Index">Shop</a></li>
+        @if (p.Category != null)
+        {
+            <li class="breadcrumb-item"><a asp-controller="Shop" asp-action="Index" asp-route-categoryId="@p.CategoryId">@p.Category.Name</a></li>
+        }
+        <li class="breadcrumb-item active">@p.Name</li>
+    </ol>
+</nav>
+
+<div class="row g-4 mb-5">
+    @* ---------- Images ---------- *@
+    <div class="col-md-6">
+        <div class="bg-white rounded-3 shadow-sm p-2 mb-2">
+            @if (mainImage != null)
+            {
+                <img id="mainImage" src="@mainImage" alt="@p.Name" class="w-100 rounded-3 details-main-img" />
+            }
+            else
+            {
+                <div class="details-main-img d-flex align-items-center justify-content-center bg-light text-muted rounded-3">No image</div>
+            }
+        </div>
+
+        @if (Model.Images.Count > 1)
+        {
+            <div class="d-flex flex-wrap gap-2">
+                @foreach (var img in Model.Images)
+                {
+                    <img src="@img.ImageUrl" alt="" class="details-thumb rounded-2 @(img.ImageUrl == mainImage ? "active" : "")"
+                         onclick="showImage(this)" />
+                }
+            </div>
+        }
+    </div>
+
+    @* ---------- Info + Add to cart ---------- *@
+    <div class="col-md-6">
+        @if (!string.IsNullOrEmpty(p.Brand))
+        {
+            <div class="text-uppercase small text-muted fw-semibold">@p.Brand</div>
+        }
+        <h1 class="h2 fw-bold">@p.Name</h1>
+
+        <div class="mb-3">
+            <span class="fs-3 fw-bold">৳ @p.BasePrice.ToString("N0")</span>
+            @if (onSale)
+            {
+                <span class="text-muted text-decoration-line-through ms-2">৳ @p.CompareAtPrice!.Value.ToString("N0")</span>
+                <span class="badge bg-danger ms-2">-@((int)Math.Round((1 - p.BasePrice / p.CompareAtPrice!.Value) * 100))%</span>
+            }
+        </div>
+
+        @if (Model.TotalStock == 0)
+        {
+            <div class="alert alert-secondary">This product is currently out of stock.</div>
+        }
+        else
+        {
+            <form asp-controller="Cart" asp-action="Add" method="post" id="addToCartForm">
+                <input type="hidden" name="variantId" id="variantId" />
+
+                @* Size buttons *@
+                <div class="mb-3">
+                    <div class="fw-semibold mb-2">Size: <span id="chosenSize" class="text-muted fw-normal">choose one</span></div>
+                    <div class="d-flex flex-wrap gap-2">
+                        @foreach (var size in Model.Sizes)
+                        {
+                            <button type="button" class="btn btn-outline-dark option-btn" data-type="size" data-value="@size">@size</button>
+                        }
+                    </div>
+                </div>
+
+                @* Color buttons *@
+                <div class="mb-3">
+                    <div class="fw-semibold mb-2">Color: <span id="chosenColor" class="text-muted fw-normal">choose one</span></div>
+                    <div class="d-flex flex-wrap gap-2">
+                        @foreach (var color in Model.Colors)
+                        {
+                            <button type="button" class="btn btn-outline-dark option-btn" data-type="color" data-value="@color">@color</button>
+                        }
+                    </div>
+                </div>
+
+                <div id="stockInfo" class="small mb-3 text-muted">Choose a size and color to see availability.</div>
+
+                <div class="d-flex gap-2 align-items-center mb-3">
+                    <label for="quantity" class="fw-semibold">Qty</label>
+                    <input type="number" name="quantity" id="quantity" value="1" min="1" max="1" class="form-control" style="width:90px" />
+                    <button type="submit" id="addBtn" class="btn btn-dark btn-lg flex-grow-1" disabled>Add to cart</button>
+                </div>
+            </form>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(p.Description))
+        {
+            <hr />
+            <h2 class="h6 fw-bold">Description</h2>
+            <p class="text-muted" style="white-space:pre-line">@p.Description</p>
+        }
+    </div>
+</div>
+
+@* ---------- Related products ---------- *@
+@if (Model.Related.Any())
+{
+    <section class="mb-5">
+        <h2 class="h4 mb-3">You may also like</h2>
+        <div class="row row-cols-2 row-cols-md-4 g-3">
+            @foreach (var r in Model.Related)
+            {
+                <div class="col"><partial name="_ProductCard" model="r" /></div>
+            }
+        </div>
+    </section>
+}
+
+@section Scripts {
+    <script>
+        // All size/color combinations with their stock (from the database)
+        const variants = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Variants));
+        // JSON property names: Id, Size, Color, Stock
+        let chosen = { size: null, color: null };
+
+        function showImage(thumb) {
+            document.getElementById('mainImage').src = thumb.src;
+            document.querySelectorAll('.details-thumb').forEach(t => t.classList.remove('active'));
+            thumb.classList.add('active');
+        }
+
+        function hasStock(size, color) {
+            return variants.some(v => (size === null || v.Size === size) &&
+                                      (color === null || v.Color === color) && v.Stock > 0);
+        }
+
+        function refresh() {
+            // Highlight chosen buttons, fade options that are not available with the other choice
+            document.querySelectorAll('.option-btn').forEach(btn => {
+                const type = btn.dataset.type, value = btn.dataset.value;
+                const isChosen = chosen[type] === value;
+                btn.classList.toggle('btn-dark', isChosen);
+                btn.classList.toggle('btn-outline-dark', !isChosen);
+
+                const available = type === 'size' ? hasStock(value, chosen.color) : hasStock(chosen.size, value);
+                btn.classList.toggle('unavailable', !available);
+            });
+
+            document.getElementById('chosenSize').textContent = chosen.size ?? 'choose one';
+            document.getElementById('chosenColor').textContent = chosen.color ?? 'choose one';
+
+            const info = document.getElementById('stockInfo');
+            const addBtn = document.getElementById('addBtn');
+            const qty = document.getElementById('quantity');
+            const variant = variants.find(v => v.Size === chosen.size && v.Color === chosen.color);
+
+            if (!chosen.size || !chosen.color) {
+                info.className = 'small mb-3 text-muted';
+                info.textContent = 'Choose a size and color to see availability.';
+                addBtn.disabled = true;
+            } else if (!variant || variant.Stock <= 0) {
+                info.className = 'small mb-3 text-danger';
+                info.textContent = 'This combination is out of stock.';
+                addBtn.disabled = true;
+            } else {
+                info.className = 'small mb-3 ' + (variant.Stock <= 5 ? 'text-warning' : 'text-success');
+                info.textContent = variant.Stock <= 5 ? `Only ${variant.Stock} left!` : 'In stock';
+                document.getElementById('variantId').value = variant.Id;
+                qty.max = variant.Stock;
+                if (+qty.value > variant.Stock) qty.value = variant.Stock;
+                addBtn.disabled = false;
+            }
+        }
+
+        document.querySelectorAll('.option-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const type = btn.dataset.type;
+                chosen[type] = chosen[type] === btn.dataset.value ? null : btn.dataset.value;
+                refresh();
+            });
+        });
+
+        // If there is only one size or one color, choose it automatically
+        @if (Model.Sizes.Count == 1) { <text>chosen.size = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Sizes[0]));</text> }
+        @if (Model.Colors.Count == 1) { <text>chosen.color = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Colors[0]));</text> }
+        if (document.getElementById('addToCartForm')) refresh();
+    </script>
+}
