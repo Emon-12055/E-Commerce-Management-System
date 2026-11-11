@@ -21,7 +21,7 @@ namespace ECommerceManagementSystem.ViewComponents
         {
             var vm = new HomeProductsViewModel
             {
-                Categories = await _context.Categories.OrderBy(c => c.Name).Take(8).ToListAsync(),
+                Categories = await _context.Categories.Where(c => c.IsActive).OrderBy(c => c.DisplayOrder).ThenBy(c => c.Name).Take(8).ToListAsync(),
 
                 Featured = await _context.Products
                     .Where(p => p.IsActive && p.IsFeatured)

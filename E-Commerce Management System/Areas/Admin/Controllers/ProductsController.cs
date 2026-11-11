@@ -39,7 +39,7 @@ namespace ECommerceManagementSystem.Areas.Admin.Controllers
                 {
                     Id = p.Id,
                     Name = p.Name,
-                    CategoryName = p.Category!.Name,
+                    CategoryName = p.Category.Name,
                     Price = p.BasePrice,
                     IsActive = p.IsActive,
                     MainImageUrl = p.Images
@@ -251,6 +251,7 @@ namespace ECommerceManagementSystem.Areas.Admin.Controllers
             _context.ProductVariants.Add(new ProductVariant
             {
                 ProductId = vm.ProductId,
+                SKU = await MakeUniqueSkuAsync(vm.ProductId, size, color),
                 Size = size,
                 Color = color,
                 StockQuantity = vm.StockQuantity
@@ -284,7 +285,7 @@ namespace ECommerceManagementSystem.Areas.Admin.Controllers
 
         // ---------- Helpers ----------
 
-        // "Men's Black T-Shirt" -> "men-s-black-t-shirt" (adds -2, -3... if it already exists)
+        // "Men's Black T-Shirt" -> "mens-black-t-shirt" (adds -2, -3... if it already exists)
         private async Task<string> MakeUniqueSlugAsync(string name)
         {
             var chars = name.Trim().ToLowerInvariant()
@@ -300,6 +301,22 @@ namespace ECommerceManagementSystem.Areas.Admin.Controllers
             while (await _context.Products.AnyAsync(p => p.Slug == slug))
                 slug = $"{baseSlug}-{i++}";
             return slug;
+        }
+
+        // Product 12, size M, color Black -> "P12-M-BLACK"
+        private async Task<string> MakeUniqueSkuAsync(int productId, string size, string color)
+        {
+            static string Clean(string x) =>
+                new string(x.ToUpperInvariant().Where(char.IsLetterOrDigit).ToArray());
+
+            var baseSku = $"P{productId}-{Clean(size)}-{Clean(color)}";
+            if (baseSku.Length > 45) baseSku = baseSku[..45];
+
+            var sku = baseSku;
+            int i = 2;
+            while (await _context.ProductVariants.AnyAsync(v => v.SKU == sku))
+                sku = $"{baseSku}-{i++}";
+            return sku;
         }
 
         private async Task<List<SelectListItem>> GetCategoryList(int? selectedId = null)

@@ -8,6 +8,17 @@
 
 <link rel="stylesheet" href="~/css/shop.css" asp-append-version="true" />
 
+@if (TempData["Success"] is string ok)
+{
+    <div class="alert alert-success alert-dismissible fade show">@ok
+        <a asp-controller="Cart" asp-action="Index" class="alert-link ms-2">View cart</a>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+}
+@if (TempData["Error"] is string err)
+{
+    <div class="alert alert-danger alert-dismissible fade show">@err<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+}
+
 <nav aria-label="breadcrumb" class="mb-3">
     <ol class="breadcrumb small">
         <li class="breadcrumb-item"><a asp-controller="Home" asp-action="Index">Home</a></li>
@@ -55,7 +66,7 @@
         <h1 class="h2 fw-bold">@p.Name</h1>
 
         <div class="mb-3">
-            <span class="fs-3 fw-bold">৳ @p.BasePrice.ToString("N0")</span>
+            <span class="fs-3 fw-bold">৳ <span id="price">@p.BasePrice.ToString("N0")</span></span>
             @if (onSale)
             {
                 <span class="text-muted text-decoration-line-through ms-2">৳ @p.CompareAtPrice!.Value.ToString("N0")</span>
@@ -131,7 +142,7 @@
     <script>
         // All size/color combinations with their stock (from the database)
         const variants = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Variants));
-        // JSON property names: Id, Size, Color, Stock
+        // JSON property names: Id, Size, Color, Stock, Price
         let chosen = { size: null, color: null };
 
         function showImage(thumb) {
@@ -177,6 +188,7 @@
                 info.className = 'small mb-3 ' + (variant.Stock <= 5 ? 'text-warning' : 'text-success');
                 info.textContent = variant.Stock <= 5 ? `Only ${variant.Stock} left!` : 'In stock';
                 document.getElementById('variantId').value = variant.Id;
+                document.getElementById('price').textContent = Math.round(variant.Price).toLocaleString('en-US');
                 qty.max = variant.Stock;
                 if (+qty.value > variant.Stock) qty.value = variant.Stock;
                 addBtn.disabled = false;

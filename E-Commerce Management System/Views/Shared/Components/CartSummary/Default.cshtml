@@ -1,0 +1,11 @@
+@model int
+
+<li class="nav-item">
+    <a class="nav-link text-dark position-relative" asp-area="" asp-controller="Cart" asp-action="Index">
+        🛒 Cart
+        @if (Model > 0)
+        {
+            <span class="badge rounded-pill bg-danger">@Model</span>
+        }
+    </a>
+</li>

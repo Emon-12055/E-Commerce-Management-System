@@ -1,7 +1,6 @@
-using ECommerceManagementSystem.Services;
 using ECommerceManagementSystem.Data;
 using ECommerceManagementSystem.Models;
-          // ← Phase 4: নতুন
+using ECommerceManagementSystem.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -47,6 +46,14 @@ builder.Services.AddRazorPages();
 
 // ----- Phase 4: product image upload service
 builder.Services.AddScoped<IImageStorageService, ImageStorageService>();
+
+// ----- Phase 5: shopping cart service
+builder.Services.AddScoped<ICartService, CartService>();
+
+// ----- Phase 6: orders and online payment (SSLCommerz)
+builder.Services.AddScoped<IOrderService, OrderService>();
+builder.Services.Configure<SslCommerzOptions>(builder.Configuration.GetSection("SSLCommerz"));
+builder.Services.AddHttpClient<ISslCommerzService, SslCommerzService>();
 
 var app = builder.Build();
 

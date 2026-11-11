@@ -58,6 +58,7 @@
                                 Privacy
                             </a>
                         </li>
+
                         <li class="nav-item">
                             <a class="nav-link text-dark"
                                asp-area=""
@@ -75,6 +76,22 @@
                                    asp-controller="Dashboard"
                                    asp-action="Index">
                                     Admin Panel
+                                </a>
+                            </li>
+                        }
+
+                        <!-- Phase 5: Cart with item count -->
+                        @await Component.InvokeAsync("CartSummary")
+
+                        <!-- Phase 6: My Orders (only for logged-in users) -->
+                        @if (User.Identity?.IsAuthenticated == true)
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link text-dark"
+                                   asp-area=""
+                                   asp-controller="Orders"
+                                   asp-action="Index">
+                                    My Orders
                                 </a>
                             </li>
                         }

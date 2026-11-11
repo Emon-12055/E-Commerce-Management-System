@@ -16,3 +16,27 @@
 
 .option-btn { min-width: 52px; }
 .option-btn.unavailable { opacity: .35; text-decoration: line-through; }
+
+/* Cart page */
+.cart-img { width: 88px; height: 110px; object-fit: cover; display: block; }
+.qty-btn { width: 32px; }
+
+/* Checkout */
+.payment-option { cursor: pointer; }
+.payment-option:has(input:checked) { border-color: #212529 !important; background: #f8f9fa; }
+
+/* Order tracking */
+.tracking { position: relative; }
+.tracking-step { position: relative; }
+.tracking-step:not(:last-child)::after {
+    content: ""; position: absolute; top: 20px; left: calc(50% + 24px); right: calc(-50% + 24px);
+    height: 3px; background: #dee2e6;
+}
+.tracking-step.done:not(:last-child)::after { background: #198754; }
+.tracking-dot {
+    width: 42px; height: 42px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    background: #e9ecef; font-size: 1.1rem; filter: grayscale(1); opacity: .6;
+}
+.tracking-step.done .tracking-dot { background: #d1e7dd; filter: none; opacity: 1; }
+.tracking-step.current .tracking-dot { background: #212529; filter: none; opacity: 1; box-shadow: 0 0 0 4px rgba(33,37,41,.15); }
+.tracking-step.todo { color: #adb5bd; }

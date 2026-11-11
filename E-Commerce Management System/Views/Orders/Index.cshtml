@@ -1,0 +1,72 @@
+@using ECommerceManagementSystem.ViewModels
+@model List<OrderListItemViewModel>
+@{
+    ViewData["Title"] = "My orders";
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+    <h1 class="h3 mb-0">My orders</h1>
+
+    <form asp-action="Track" method="get" class="d-flex gap-2">
+        <input type="text" name="orderNumber" class="form-control" placeholder="Order number e.g. ORD-20261112-12345" style="min-width:300px" />
+        <button type="submit" class="btn btn-outline-dark text-nowrap">Track order</button>
+    </form>
+</div>
+
+@if (TempData["Success"] is string ok)
+{
+    <div class="alert alert-success alert-dismissible fade show">@ok<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+}
+@if (TempData["Error"] is string err)
+{
+    <div class="alert alert-danger alert-dismissible fade show">@err<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+}
+
+@if (!Model.Any())
+{
+    <div class="text-center py-5 bg-white rounded-3 shadow-sm">
+        <div class="display-6 mb-2">📦</div>
+        <p class="fs-5 mb-2">You have no orders yet</p>
+        <a asp-controller="Shop" asp-action="Index" class="btn btn-dark px-4">Start shopping</a>
+    </div>
+}
+else
+{
+    <div class="card border-0 shadow-sm">
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Order</th><th>Date</th><th class="text-center">Items</th><th class="text-end">Total</th>
+                        <th>Payment</th><th>Status</th><th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var o in Model)
+                    {
+                        <tr>
+                            <td class="fw-semibold">@o.OrderNumber</td>
+                            <td class="text-nowrap">@OrderDisplay.Local(o.OrderDate).ToString("dd MMM yyyy")</td>
+                            <td class="text-center">@o.ItemCount</td>
+                            <td class="text-end text-nowrap">৳ @o.Total.ToString("N0")</td>
+                            <td class="small">
+                                @if (o.PaymentMethod.HasValue)
+                                {
+                                    <div>@OrderDisplay.Label(o.PaymentMethod.Value)</div>
+                                }
+                                @if (o.PaymentStatus.HasValue)
+                                {
+                                    <span class="badge @OrderDisplay.Badge(o.PaymentStatus.Value)">@o.PaymentStatus</span>
+                                }
+                            </td>
+                            <td><span class="badge @OrderDisplay.Badge(o.Status)">@o.Status</span></td>
+                            <td class="text-end">
+                                <a asp-action="Details" asp-route-id="@o.Id" class="btn btn-sm btn-outline-dark">View</a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}

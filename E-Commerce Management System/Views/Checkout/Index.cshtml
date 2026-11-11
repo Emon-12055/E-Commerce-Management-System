@@ -1,0 +1,153 @@
+@using ECommerceManagementSystem.Models
+@model ECommerceManagementSystem.ViewModels.CheckoutViewModel
+@{
+    ViewData["Title"] = "Checkout";
+    var items = Model.Cart?.Items.ToList() ?? new List<CartItem>();
+    var subTotal = items.Sum(i => i.LineTotal);
+    const decimal insideDhaka = ECommerceManagementSystem.Services.OrderService.ShippingInsideDhaka;
+    const decimal outsideDhaka = ECommerceManagementSystem.Services.OrderService.ShippingOutsideDhaka;
+}
+
+<link rel="stylesheet" href="~/css/shop.css" asp-append-version="true" />
+
+<h1 class="h3 mb-4">Checkout</h1>
+
+<form asp-action="Index" method="post">
+    <div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
+
+    <div class="row g-4">
+        @* ---------- Shipping + payment ---------- *@
+        <div class="col-lg-7">
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-body">
+                    <h2 class="h5 mb-3">1. Delivery address</h2>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label asp-for="FullName" class="form-label"></label>
+                            <input asp-for="FullName" class="form-control" />
+                            <span asp-validation-for="FullName" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="Phone" class="form-label"></label>
+                            <input asp-for="Phone" class="form-control" placeholder="01XXXXXXXXX" />
+                            <span asp-validation-for="Phone" class="text-danger small"></span>
+                        </div>
+                        <div class="col-12">
+                            <label asp-for="Address" class="form-label"></label>
+                            <input asp-for="Address" class="form-control" placeholder="House, road, area" />
+                            <span asp-validation-for="Address" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="City" class="form-label"></label>
+                            <input asp-for="City" class="form-control" id="cityInput" list="cityList" placeholder="Dhaka" />
+                            <datalist id="cityList">
+                                <option value="Dhaka"></option><option value="Chattogram"></option><option value="Sylhet"></option>
+                                <option value="Rajshahi"></option><option value="Khulna"></option><option value="Barishal"></option>
+                                <option value="Rangpur"></option><option value="Mymensingh"></option><option value="Cumilla"></option>
+                                <option value="Gazipur"></option><option value="Narayanganj"></option>
+                            </datalist>
+                            <span asp-validation-for="City" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="PostalCode" class="form-label"></label>
+                            <input asp-for="PostalCode" class="form-control" />
+                        </div>
+                        <div class="col-12">
+                            <label asp-for="Notes" class="form-label"></label>
+                            <textarea asp-for="Notes" class="form-control" rows="2" placeholder="e.g. call before delivery"></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <h2 class="h5 mb-3">2. Payment method</h2>
+
+                    <label class="payment-option d-flex gap-3 align-items-start border rounded-3 p-3 mb-2">
+                        <input type="radio" asp-for="PaymentMethod" value="@PaymentMethod.CashOnDelivery" class="form-check-input mt-1" />
+                        <div>
+                            <div class="fw-semibold">💵 Cash on Delivery</div>
+                            <div class="small text-muted">Pay in cash when your order arrives.</div>
+                        </div>
+                    </label>
+
+                    @if (Model.OnlinePaymentEnabled)
+                    {
+                        <label class="payment-option d-flex gap-3 align-items-start border rounded-3 p-3">
+                            <input type="radio" asp-for="PaymentMethod" value="@PaymentMethod.SSLCommerz" class="form-check-input mt-1" />
+                            <div>
+                                <div class="fw-semibold">💳 Pay online</div>
+                                <div class="small text-muted">bKash, Nagad, Rocket, Visa/Mastercard or internet banking (secured by SSLCommerz).</div>
+                            </div>
+                        </label>
+                    }
+                    else
+                    {
+                        <div class="small text-muted">Online payment is coming soon.</div>
+                    }
+                    <span asp-validation-for="PaymentMethod" class="text-danger small"></span>
+                </div>
+            </div>
+        </div>
+
+        @* ---------- Order summary ---------- *@
+        <div class="col-lg-5">
+            <div class="card border-0 shadow-sm position-sticky" style="top:1rem">
+                <div class="card-body">
+                    <h2 class="h5 mb-3">Order summary</h2>
+
+                    <ul class="list-unstyled mb-3">
+                        @foreach (var item in items)
+                        {
+                            var v = item.ProductVariant;
+                            var img = v?.Product?.Images.OrderByDescending(i => i.IsMain).FirstOrDefault()?.ImageUrl;
+                            <li class="d-flex gap-2 align-items-center mb-2">
+                                @if (img != null)
+                                {
+                                    <img src="@img" alt="" class="rounded-2" style="width:48px;height:60px;object-fit:cover" />
+                                }
+                                <div class="flex-grow-1 small">
+                                    <div class="fw-semibold">@v?.Product?.Name</div>
+                                    <div class="text-muted">@v?.Size / @v?.Color × @item.Quantity</div>
+                                </div>
+                                <div class="small fw-semibold text-nowrap">৳ @item.LineTotal.ToString("N0")</div>
+                            </li>
+                        }
+                    </ul>
+
+                    <div class="d-flex justify-content-between mb-1">
+                        <span>Subtotal</span><span>৳ @subTotal.ToString("N0")</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-1">
+                        <span>Shipping</span><span>৳ <span id="shipping">@outsideDhaka.ToString("N0")</span></span>
+                    </div>
+                    <div class="small text-muted mb-2">Inside Dhaka ৳@insideDhaka.ToString("N0"), outside Dhaka ৳@outsideDhaka.ToString("N0")</div>
+                    <hr />
+                    <div class="d-flex justify-content-between fs-5 fw-bold mb-3">
+                        <span>Total</span><span>৳ <span id="total">@((subTotal + outsideDhaka).ToString("N0"))</span></span>
+                    </div>
+
+                    <button type="submit" class="btn btn-dark btn-lg w-100">Place order</button>
+                    <a asp-controller="Cart" asp-action="Index" class="btn btn-link w-100 mt-1">Back to cart</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        // Update shipping and total when the city changes
+        const subTotal = @(subTotal.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        const cityInput = document.getElementById('cityInput');
+        function updateTotals() {
+            const shipping = cityInput.value.trim().toLowerCase() === 'dhaka' ? @(insideDhaka.ToString(System.Globalization.CultureInfo.InvariantCulture)) : @(outsideDhaka.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            document.getElementById('shipping').textContent = shipping.toLocaleString('en-US');
+            document.getElementById('total').textContent = Math.round(subTotal + shipping).toLocaleString('en-US');
+        }
+        cityInput.addEventListener('input', updateTotals);
+        updateTotals();
+    </script>
+}

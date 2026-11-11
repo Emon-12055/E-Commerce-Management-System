@@ -32,7 +32,7 @@ namespace ECommerceManagementSystem.Controllers
                 .OrderByDescending(i => i.IsMain).ThenBy(i => i.Id)
                 .Select(i => i.ImageUrl)
                 .FirstOrDefault(),
-            InStock = p.Variants.Any(v => v.StockQuantity > 0)
+            InStock = p.Variants.Any(v => v.IsActive && v.StockQuantity > 0)
         };
 
         // GET: /Shop?search=shirt&categoryId=1&minPrice=500&maxPrice=2000&size=M&color=Black&sort=price_asc&page=2
@@ -61,13 +61,13 @@ namespace ECommerceManagementSystem.Controllers
                 query = query.Where(p => p.BasePrice <= filter.MaxPrice);
 
             if (!string.IsNullOrWhiteSpace(filter.Size))
-                query = query.Where(p => p.Variants.Any(v => v.Size == filter.Size && v.StockQuantity > 0));
+                query = query.Where(p => p.Variants.Any(v => v.IsActive && v.Size == filter.Size && v.StockQuantity > 0));
 
             if (!string.IsNullOrWhiteSpace(filter.Color))
-                query = query.Where(p => p.Variants.Any(v => v.Color == filter.Color && v.StockQuantity > 0));
+                query = query.Where(p => p.Variants.Any(v => v.IsActive && v.Color == filter.Color && v.StockQuantity > 0));
 
             if (filter.InStockOnly)
-                query = query.Where(p => p.Variants.Any(v => v.StockQuantity > 0));
+                query = query.Where(p => p.Variants.Any(v => v.IsActive && v.StockQuantity > 0));
 
             // ----- Sorting
             query = filter.Sort switch
@@ -90,9 +90,9 @@ namespace ECommerceManagementSystem.Controllers
                 .ToListAsync();
 
             // ----- Data for the filter sidebar
-            filter.Categories = await _context.Categories.OrderBy(c => c.Name).ToListAsync();
+            filter.Categories = await _context.Categories.Where(c => c.IsActive).OrderBy(c => c.DisplayOrder).ThenBy(c => c.Name).ToListAsync();
 
-            var activeVariants = _context.ProductVariants.Where(v => v.Product.IsActive);
+            var activeVariants = _context.ProductVariants.Where(v => v.IsActive && v.Product!.IsActive);
             filter.Sizes = await activeVariants.Select(v => v.Size).Distinct().OrderBy(x => x).ToListAsync();
             filter.Colors = await activeVariants.Select(v => v.Color).Distinct().OrderBy(x => x).ToListAsync();
 
@@ -115,9 +115,16 @@ namespace ECommerceManagementSystem.Controllers
                     .OrderByDescending(i => i.IsMain).ThenBy(i => i.Id)
                     .ToListAsync(),
                 Variants = await _context.ProductVariants
-                    .Where(v => v.ProductId == id)
+                    .Where(v => v.ProductId == id && v.IsActive)
                     .OrderBy(v => v.Size).ThenBy(v => v.Color)
-                    .Select(v => new VariantOption { Id = v.Id, Size = v.Size, Color = v.Color, Stock = v.StockQuantity })
+                    .Select(v => new VariantOption
+                    {
+                        Id = v.Id,
+                        Size = v.Size,
+                        Color = v.Color,
+                        Stock = v.StockQuantity,
+                        Price = v.Price ?? product.BasePrice
+                    })
                     .ToListAsync(),
                 Related = await _context.Products
                     .Where(p => p.IsActive && p.CategoryId == product.CategoryId && p.Id != id)

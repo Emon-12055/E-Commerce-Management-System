@@ -50,6 +50,7 @@ namespace ECommerceManagementSystem.Areas.Admin.Controllers
             _context.Categories.Add(new Category
             {
                 Name = vm.Name.Trim(),
+                Slug = await MakeUniqueSlugAsync(vm.Name, 0),
                 Description = vm.Description?.Trim()
             });
             await _context.SaveChangesAsync();
@@ -85,6 +86,8 @@ namespace ECommerceManagementSystem.Areas.Admin.Controllers
 
             category.Name = vm.Name.Trim();
             category.Description = vm.Description?.Trim();
+            if (string.IsNullOrEmpty(category.Slug))
+                category.Slug = await MakeUniqueSlugAsync(category.Name, category.Id);
             await _context.SaveChangesAsync();
 
             TempData["Success"] = $"Category \"{category.Name}\" updated.";
@@ -110,6 +113,23 @@ namespace ECommerceManagementSystem.Areas.Admin.Controllers
 
             TempData["Success"] = $"Category \"{category.Name}\" deleted.";
             return RedirectToAction(nameof(Index));
+        }
+
+        // "Men's Wear" -> "men-s-wear" (adds -2, -3... if it already exists)
+        private async Task<string> MakeUniqueSlugAsync(string name, int currentId)
+        {
+            var chars = name.Trim().ToLowerInvariant()
+                .Select(ch => char.IsLetterOrDigit(ch) ? ch : '-')
+                .ToArray();
+            var baseSlug = string.Join("-", new string(chars).Split('-', StringSplitOptions.RemoveEmptyEntries));
+            if (string.IsNullOrEmpty(baseSlug)) baseSlug = "category";
+            if (baseSlug.Length > 100) baseSlug = baseSlug[..100];
+
+            var slug = baseSlug;
+            int i = 2;
+            while (await _context.Categories.AnyAsync(c => c.Slug == slug && c.Id != currentId))
+                slug = $"{baseSlug}-{i++}";
+            return slug;
         }
 
         private async Task CheckDuplicateName(CategoryFormViewModel vm)

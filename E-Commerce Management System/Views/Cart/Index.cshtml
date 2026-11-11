@@ -1,0 +1,160 @@
+@model ECommerceManagementSystem.Models.Cart
+@{
+    ViewData["Title"] = "Your cart";
+    var items = Model.Items.OrderBy(i => i.AddedAt).ToList();
+    bool hasProblem = items.Any(i => i.ProductVariant == null
+                                   || !i.ProductVariant.IsActive
+                                   || i.ProductVariant.Product?.IsActive != true
+                                   || i.Quantity > i.ProductVariant.StockQuantity);
+}
+
+<link rel="stylesheet" href="~/css/shop.css" asp-append-version="true" />
+
+<h1 class="h3 mb-4">Your cart</h1>
+
+@if (TempData["Success"] is string ok)
+{
+    <div class="alert alert-success alert-dismissible fade show">@ok<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+}
+@if (TempData["Error"] is string err)
+{
+    <div class="alert alert-danger alert-dismissible fade show">@err<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+}
+
+@if (!items.Any())
+{
+    <div class="text-center py-5 bg-white rounded-3 shadow-sm">
+        <div class="display-6 mb-2">🛒</div>
+        <p class="fs-5 mb-2">Your cart is empty</p>
+        <p class="text-muted">Browse our products and add something you like.</p>
+        <a asp-controller="Shop" asp-action="Index" class="btn btn-dark px-4">Start shopping</a>
+    </div>
+}
+else
+{
+    <div class="row g-4">
+        @* ---------- Items ---------- *@
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm">
+                <ul class="list-group list-group-flush">
+                    @foreach (var item in items)
+                    {
+                        var v = item.ProductVariant;
+                        var p = v?.Product;
+                        var img = p?.Images.OrderByDescending(i => i.IsMain).ThenBy(i => i.Id).FirstOrDefault()?.ImageUrl;
+                        bool unavailable = v == null || !v.IsActive || p?.IsActive != true;
+                        int stock = v?.StockQuantity ?? 0;
+
+                        <li class="list-group-item py-3">
+                            <div class="d-flex gap-3">
+                                <a asp-controller="Shop" asp-action="Details" asp-route-id="@p?.Id" class="flex-shrink-0">
+                                    @if (img != null)
+                                    {
+                                        <img src="@img" alt="" class="rounded-2 cart-img" />
+                                    }
+                                    else
+                                    {
+                                        <div class="rounded-2 cart-img bg-light"></div>
+                                    }
+                                </a>
+
+                                <div class="flex-grow-1">
+                                    <div class="d-flex justify-content-between gap-2">
+                                        <div>
+                                            <a asp-controller="Shop" asp-action="Details" asp-route-id="@p?.Id"
+                                               class="fw-semibold text-dark text-decoration-none">@(p?.Name ?? "Product")</a>
+                                            <div class="small text-muted">Size: @v?.Size · Color: @v?.Color</div>
+                                            <div class="small text-muted">৳ @item.UnitPrice.ToString("N0") each</div>
+                                        </div>
+                                        <div class="fw-bold text-nowrap">৳ @item.LineTotal.ToString("N0")</div>
+                                    </div>
+
+                                    @if (unavailable)
+                                    {
+                                        <div class="small text-danger mt-1">This item is no longer available. Please remove it.</div>
+                                    }
+                                    else if (stock == 0)
+                                    {
+                                        <div class="small text-danger mt-1">Out of stock now. Please remove it.</div>
+                                    }
+                                    else if (item.Quantity > stock)
+                                    {
+                                        <div class="small text-warning mt-1">Only @stock left. Please lower the quantity.</div>
+                                    }
+
+                                    <div class="d-flex align-items-center gap-2 mt-2">
+                                        <form asp-action="Update" method="post" class="d-flex align-items-center gap-1">
+                                            <input type="hidden" name="cartItemId" value="@item.Id" />
+                                            <button type="button" class="btn btn-sm btn-outline-secondary qty-btn" onclick="changeQty(this, -1)">−</button>
+                                            <input type="number" name="quantity" value="@item.Quantity" min="1" max="@Math.Max(1, Math.Min(stock, 100))"
+                                                   class="form-control form-control-sm text-center" style="width:64px"
+                                                   onchange="this.form.submit()" />
+                                            <button type="button" class="btn btn-sm btn-outline-secondary qty-btn" onclick="changeQty(this, 1)"
+                                                    disabled="@(item.Quantity >= stock)">+</button>
+                                        </form>
+
+                                        <form asp-action="Remove" method="post" class="ms-auto">
+                                            <input type="hidden" name="cartItemId" value="@item.Id" />
+                                            <button type="submit" class="btn btn-sm btn-link text-danger text-decoration-none">Remove</button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </li>
+                    }
+                </ul>
+            </div>
+
+            <div class="d-flex justify-content-between mt-3">
+                <a asp-controller="Shop" asp-action="Index" class="btn btn-outline-dark">&larr; Continue shopping</a>
+                <form asp-action="Clear" method="post" onsubmit="return confirm('Remove all items from your cart?');">
+                    <button type="submit" class="btn btn-outline-danger">Clear cart</button>
+                </form>
+            </div>
+        </div>
+
+        @* ---------- Summary ---------- *@
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <h2 class="h5 mb-3">Order summary</h2>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Items (@Model.TotalItems)</span>
+                        <span>৳ @Model.SubTotal.ToString("N0")</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2 text-muted small">
+                        <span>Shipping</span>
+                        <span>Calculated at checkout</span>
+                    </div>
+                    <hr />
+                    <div class="d-flex justify-content-between fs-5 fw-bold mb-3">
+                        <span>Subtotal</span>
+                        <span>৳ @Model.SubTotal.ToString("N0")</span>
+                    </div>
+
+                    @if (hasProblem)
+                    {
+                        <div class="alert alert-warning small mb-3">Please fix the items marked above before checkout.</div>
+                        <button class="btn btn-dark btn-lg w-100" disabled>Proceed to checkout</button>
+                    }
+                    else
+                    {
+                        <a asp-controller="Checkout" asp-action="Index" class="btn btn-dark btn-lg w-100">Proceed to checkout</a>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@section Scripts {
+    <script>
+        // − / + buttons: change the number and save right away (0 removes the item)
+        function changeQty(button, delta) {
+            const form = button.closest('form');
+            const input = form.querySelector('input[name="quantity"]');
+            input.value = Math.max(0, (parseInt(input.value) || 1) + delta);
+            form.submit();
+        }
+    </script>
+}
