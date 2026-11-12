@@ -1,0 +1,100 @@
+@model ExpenseListViewModel
+@using Microsoft.AspNetCore.Mvc.Rendering
+@{
+    ViewData["Title"] = "Expenses";
+    var categoryItems = Enum.GetValues<ExpenseCategory>()
+        .Select(c => new SelectListItem(ReportDisplay.Label(c), c.ToString(), Model.Category == c));
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3 mb-0">Expenses</h1>
+    <div class="d-flex gap-2">
+        <a asp-controller="Reports" asp-action="Profit" asp-route-from="@Model.Range.From.ToString("yyyy-MM-dd")" asp-route-to="@Model.Range.To.ToString("yyyy-MM-dd")"
+           class="btn btn-outline-primary">Profit report</a>
+        <a asp-action="Create" class="btn btn-primary">+ Add expense</a>
+    </div>
+</div>
+
+<div class="card shadow-sm mb-4">
+    <div class="card-body">
+        <form method="get" asp-action="Index" class="row g-2 align-items-end">
+            <div class="col-auto">
+                <label class="form-label small mb-1">From</label>
+                <input type="date" name="from" value="@Model.Range.From.ToString("yyyy-MM-dd")" class="form-control" />
+            </div>
+            <div class="col-auto">
+                <label class="form-label small mb-1">To</label>
+                <input type="date" name="to" value="@Model.Range.To.ToString("yyyy-MM-dd")" class="form-control" />
+            </div>
+            <div class="col-auto">
+                <label class="form-label small mb-1">Category</label>
+                <select name="category" class="form-select" asp-items="categoryItems">
+                    <option value="">All categories</option>
+                </select>
+            </div>
+            <div class="col-auto d-flex gap-2">
+                <button type="submit" class="btn btn-outline-primary">Show</button>
+                <a asp-action="Index" class="btn btn-outline-secondary">This month</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-8">
+        <div class="card shadow-sm">
+            @if (!Model.Expenses.Any())
+            {
+                <div class="card-body text-muted">No expenses in this period. Click <strong>+ Add expense</strong> to record one.</div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table mb-0 align-middle">
+                        <thead class="table-light"><tr><th>Date</th><th>Category</th><th>Description</th><th class="text-end">Amount</th><th></th></tr></thead>
+                        <tbody>
+                            @foreach (var e in Model.Expenses)
+                            {
+                                <tr>
+                                    <td class="text-nowrap">@e.Date.ToString("dd MMM yyyy")</td>
+                                    <td><span class="badge bg-light text-dark border">@ReportDisplay.Label(e.Category)</span></td>
+                                    <td>@e.Description</td>
+                                    <td class="text-end text-nowrap">৳ @e.Amount.ToString("N0")</td>
+                                    <td class="text-end text-nowrap">
+                                        <a asp-action="Edit" asp-route-id="@e.Id" class="btn btn-sm btn-outline-secondary">Edit</a>
+                                        <form asp-action="Delete" asp-route-id="@e.Id" method="post" class="d-inline"
+                                              onsubmit="return confirm('Delete this expense?');">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                        <tfoot class="table-light fw-bold">
+                            <tr><td colspan="3">Total</td><td class="text-end">৳ @Model.Total.ToString("N0")</td><td></td></tr>
+                        </tfoot>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white"><strong>By category</strong></div>
+            <table class="table mb-0">
+                <tbody>
+                    @foreach (var r in Model.ByCategory)
+                    {
+                        <tr><td>@r.Name <span class="small text-muted">(@r.Count)</span></td><td class="text-end">৳ @r.Amount.ToString("N0")</td></tr>
+                    }
+                    @if (!Model.ByCategory.Any()) { <tr><td class="text-muted">No data.</td></tr> }
+                </tbody>
+            </table>
+        </div>
+        <div class="alert alert-light border small mt-3">
+            Record costs like rent, salaries, ads, delivery and packaging here.
+            <strong>Don't</strong> add stock purchases: product cost is already counted from each product's <strong>Cost price</strong>.
+        </div>
+    </div>
+</div>

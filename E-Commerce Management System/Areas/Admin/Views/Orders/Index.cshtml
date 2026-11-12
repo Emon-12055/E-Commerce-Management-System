@@ -1,0 +1,111 @@
+@model List<AdminOrderRowViewModel>
+@{
+    ViewData["Title"] = "Orders";
+    var counts = (Dictionary<OrderStatus, int>)ViewBag.Counts;
+    OrderStatus? current = ViewBag.Status;
+    int page = ViewBag.Page, totalPages = ViewBag.TotalPages, total = ViewBag.Total;
+    string? search = ViewBag.Search, from = ViewBag.From, to = ViewBag.To;
+
+    int Count(OrderStatus s) => counts.TryGetValue(s, out var c) ? c : 0;
+    var tabs = new[] { OrderStatus.Pending, OrderStatus.Confirmed, OrderStatus.Processing, OrderStatus.Shipped,
+                       OrderStatus.Delivered, OrderStatus.Cancelled, OrderStatus.Returned };
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3 mb-0">Orders</h1>
+    <span class="text-muted small">@total order(s)</span>
+</div>
+
+@* ---------- Status tabs ---------- *@
+<ul class="nav nav-pills flex-wrap gap-1 mb-3">
+    <li class="nav-item">
+        <a class="nav-link @(current == null ? "active" : "")" asp-action="Index"
+           asp-route-search="@search" asp-route-from="@from" asp-route-to="@to">All</a>
+    </li>
+    @foreach (var s in tabs)
+    {
+        <li class="nav-item">
+            <a class="nav-link @(current == s ? "active" : "")" asp-action="Index" asp-route-status="@s"
+               asp-route-search="@search" asp-route-from="@from" asp-route-to="@to">
+                @(s == OrderStatus.Processing ? "Packing" : s.ToString())
+                <span class="badge @(current == s ? "bg-light text-dark" : "bg-secondary") ms-1">@Count(s)</span>
+            </a>
+        </li>
+    }
+</ul>
+
+@* ---------- Search ---------- *@
+<form method="get" class="row g-2 mb-3">
+    <input type="hidden" name="status" value="@current" />
+    <div class="col-md-4">
+        <input type="text" name="search" value="@search" class="form-control" placeholder="Order number, name or phone" />
+    </div>
+    <div class="col-md-2"><input type="date" name="from" value="@from" class="form-control" title="From date" /></div>
+    <div class="col-md-2"><input type="date" name="to" value="@to" class="form-control" title="To date" /></div>
+    <div class="col-md-4 d-flex gap-2">
+        <button type="submit" class="btn btn-outline-primary">Search</button>
+        <a asp-action="Index" asp-route-status="@current" class="btn btn-outline-secondary">Clear</a>
+    </div>
+</form>
+
+<div class="card shadow-sm">
+    @if (!Model.Any())
+    {
+        <div class="card-body text-muted">No orders found.</div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table mb-0 align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Order</th><th>Date</th><th>Customer</th><th class="text-center">Items</th>
+                        <th class="text-end">Total</th><th>Payment</th><th>Status</th><th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var o in Model)
+                    {
+                        <tr>
+                            <td class="fw-semibold">@o.OrderNumber</td>
+                            <td class="small text-nowrap">@OrderDisplay.Local(o.OrderDate).ToString("dd MMM, h:mm tt")</td>
+                            <td class="small">
+                                <div>@o.CustomerName</div>
+                                <div class="text-muted">@o.Phone · @o.City</div>
+                            </td>
+                            <td class="text-center">@o.ItemCount</td>
+                            <td class="text-end text-nowrap">৳ @o.Total.ToString("N0")</td>
+                            <td class="small">
+                                @if (o.PaymentMethod.HasValue)
+                                {
+                                    <div>@(o.PaymentMethod == PaymentMethod.CashOnDelivery ? "COD" : "Online")</div>
+                                }
+                                @if (o.PaymentStatus.HasValue)
+                                {
+                                    <span class="badge @OrderDisplay.Badge(o.PaymentStatus.Value)">@o.PaymentStatus</span>
+                                }
+                            </td>
+                            <td><span class="badge @OrderDisplay.Badge(o.Status)">@(o.Status == OrderStatus.Processing ? "Packing" : o.Status.ToString())</span></td>
+                            <td class="text-end"><a asp-action="Details" asp-route-id="@o.Id" class="btn btn-sm btn-outline-dark">Open</a></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+@if (totalPages > 1)
+{
+    <nav class="mt-3">
+        <ul class="pagination justify-content-center">
+            @for (int i = 1; i <= totalPages; i++)
+            {
+                <li class="page-item @(i == page ? "active" : "")">
+                    <a class="page-link" asp-action="Index" asp-route-page="@i" asp-route-status="@current"
+                       asp-route-search="@search" asp-route-from="@from" asp-route-to="@to">@i</a>
+                </li>
+            }
+        </ul>
+    </nav>
+}

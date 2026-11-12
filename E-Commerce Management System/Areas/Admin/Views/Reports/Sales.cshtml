@@ -1,0 +1,172 @@
+@model SalesReportViewModel
+@{
+    ViewData["Title"] = "Sales report";
+    var maxDaily = Model.Daily.Any() ? Model.Daily.Max(d => d.Revenue) : 0;
+    var bestDay = Model.Daily.OrderByDescending(d => d.Revenue).FirstOrDefault();
+}
+
+<style>
+    .bar-chart { display: flex; align-items: flex-end; gap: 3px; height: 180px; border-bottom: 1px solid #dee2e6; }
+    .bar-chart .bar { flex: 1; background: #0d6efd; border-radius: 3px 3px 0 0; min-height: 2px; position: relative; }
+    .bar-chart .bar:hover { background: #0a58ca; }
+    .bar-chart .bar.empty { background: #e9ecef; }
+    .share-bar { height: 6px; background: #e9ecef; border-radius: 3px; }
+    .share-bar div { height: 100%; background: #0d6efd; border-radius: 3px; }
+</style>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3 mb-0">Sales report</h1>
+    <div class="d-flex gap-2">
+        <a asp-action="Profit" asp-route-from="@Model.Range.From.ToString("yyyy-MM-dd")" asp-route-to="@Model.Range.To.ToString("yyyy-MM-dd")"
+           class="btn btn-outline-primary">Profit report &rarr;</a>
+        <a asp-action="ExportSales" asp-route-from="@Model.Range.From.ToString("yyyy-MM-dd")" asp-route-to="@Model.Range.To.ToString("yyyy-MM-dd")"
+           class="btn btn-success">⬇ Export to Excel (CSV)</a>
+    </div>
+</div>
+
+<partial name="_DateRange" model="Model.Range" />
+
+@* ---------- Key numbers ---------- *@
+<div class="row g-3 mb-4">
+    <div class="col-sm-6 col-xl-3"><div class="card stat-card shadow-sm h-100"><div class="card-body">
+        <div class="text-muted small">Revenue (incl. shipping)</div>
+        <div class="display-6">৳@Model.Revenue.ToString("N0")</div>
+    </div></div></div>
+    <div class="col-sm-6 col-xl-3"><div class="card stat-card shadow-sm h-100"><div class="card-body">
+        <div class="text-muted small">Orders</div>
+        <div class="display-6">@Model.OrderCount</div>
+        <div class="small text-muted">Avg. ৳@Model.AverageOrderValue.ToString("N0") per order</div>
+    </div></div></div>
+    <div class="col-sm-6 col-xl-3"><div class="card stat-card shadow-sm h-100"><div class="card-body">
+        <div class="text-muted small">Items sold</div>
+        <div class="display-6">@Model.ItemsSold</div>
+    </div></div></div>
+    <div class="col-sm-6 col-xl-3"><div class="card stat-card shadow-sm h-100"><div class="card-body">
+        <div class="text-muted small">Cancelled / Returned</div>
+        <div class="display-6">@Model.CancelledCount <span class="fs-5 text-muted">/ @Model.ReturnedCount</span></div>
+        <div class="small text-muted">৳@Model.CancelledValue.ToString("N0") cancelled</div>
+    </div></div></div>
+</div>
+
+@* ---------- Daily chart ---------- *@
+<div class="card shadow-sm mb-4">
+    <div class="card-header bg-white d-flex justify-content-between">
+        <strong>Revenue per day</strong>
+        @if (bestDay != null && bestDay.Revenue > 0)
+        {
+            <span class="small text-muted">Best day: @bestDay.Day.ToString("dd MMM") (৳@bestDay.Revenue.ToString("N0"))</span>
+        }
+    </div>
+    <div class="card-body">
+        @if (maxDaily == 0)
+        {
+            <div class="text-muted">No sales in this period.</div>
+        }
+        else
+        {
+            <div class="bar-chart">
+                @foreach (var d in Model.Daily)
+                {
+                    var h = d.Revenue == 0 ? 0 : Math.Max(2, (int)(d.Revenue / maxDaily * 100));
+                    <div class="bar @(d.Revenue == 0 ? "empty" : "")" style="height:@(h)%"
+                         title="@d.Day.ToString("dd MMM yyyy"): @d.Orders order(s), ৳@d.Revenue.ToString("N0")"></div>
+                }
+            </div>
+            <div class="d-flex justify-content-between small text-muted mt-1">
+                <span>@Model.Range.From.ToString("dd MMM")</span>
+                <span>Hover over a bar to see the day</span>
+                <span>@Model.Range.To.ToString("dd MMM")</span>
+            </div>
+        }
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    @* ---------- Revenue breakdown ---------- *@
+    <div class="col-lg-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-white"><strong>Revenue breakdown</strong></div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between"><span>Product sales</span><span>৳@Model.ProductSales.ToString("N0")</span></div>
+                <div class="d-flex justify-content-between"><span>Shipping charged</span><span>৳@Model.ShippingIncome.ToString("N0")</span></div>
+                <div class="d-flex justify-content-between text-danger"><span>Discounts</span><span>- ৳@Model.Discounts.ToString("N0")</span></div>
+                <hr />
+                <div class="d-flex justify-content-between fw-bold"><span>Total revenue</span><span>৳@Model.Revenue.ToString("N0")</span></div>
+                <div class="small text-muted mt-2">Cancelled and returned orders are not counted.</div>
+            </div>
+        </div>
+    </div>
+
+    @* ---------- Payment methods ---------- *@
+    <div class="col-lg-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-white"><strong>Payment methods</strong></div>
+            <div class="card-body">
+                @foreach (var r in Model.ByPaymentMethod)
+                {
+                    var pct = Model.Revenue == 0 ? 0 : (int)(r.Amount / Model.Revenue * 100);
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between small"><span>@r.Name (@r.Count)</span><span>৳@r.Amount.ToString("N0") · @pct%</span></div>
+                        <div class="share-bar"><div style="width:@(pct)%"></div></div>
+                    </div>
+                }
+                @if (!Model.ByPaymentMethod.Any()) { <div class="text-muted">No data.</div> }
+            </div>
+        </div>
+    </div>
+
+    @* ---------- Cities ---------- *@
+    <div class="col-lg-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-white"><strong>Top cities</strong></div>
+            <div class="card-body">
+                @foreach (var r in Model.ByCity)
+                {
+                    var pct = Model.Revenue == 0 ? 0 : (int)(r.Amount / Model.Revenue * 100);
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between small"><span>@r.Name (@r.Count)</span><span>৳@r.Amount.ToString("N0")</span></div>
+                        <div class="share-bar"><div style="width:@(pct)%"></div></div>
+                    </div>
+                }
+                @if (!Model.ByCity.Any()) { <div class="text-muted">No data.</div> }
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    @* ---------- Top products ---------- *@
+    <div class="col-lg-7">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-white"><strong>Best-selling products</strong></div>
+            <table class="table mb-0 align-middle">
+                <thead class="table-light"><tr><th>#</th><th>Product</th><th class="text-center">Sold</th><th class="text-end">Sales</th></tr></thead>
+                <tbody>
+                    @{ int rank = 1; }
+                    @foreach (var r in Model.TopProducts)
+                    {
+                        <tr><td>@(rank++)</td><td>@r.Name</td><td class="text-center">@r.Count</td><td class="text-end">৳@r.Amount.ToString("N0")</td></tr>
+                    }
+                    @if (!Model.TopProducts.Any()) { <tr><td colspan="4" class="text-muted">No sales in this period.</td></tr> }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    @* ---------- Categories ---------- *@
+    <div class="col-lg-5">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-white"><strong>Sales by category</strong></div>
+            <table class="table mb-0 align-middle">
+                <thead class="table-light"><tr><th>Category</th><th class="text-center">Items</th><th class="text-end">Sales</th></tr></thead>
+                <tbody>
+                    @foreach (var r in Model.ByCategory)
+                    {
+                        <tr><td>@r.Name</td><td class="text-center">@r.Count</td><td class="text-end">৳@r.Amount.ToString("N0")</td></tr>
+                    }
+                    @if (!Model.ByCategory.Any()) { <tr><td colspan="3" class="text-muted">No data.</td></tr> }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

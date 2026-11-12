@@ -1,64 +1,145 @@
 @model DashboardViewModel
 @{
     ViewData["Title"] = "Dashboard";
+    bool isAdmin = User.IsInRole("Admin");
 }
 
-<h1 class="h3 mb-4">Dashboard</h1>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 mb-0">@(isAdmin ? "Admin dashboard" : "Staff dashboard")</h1>
+    <span class="text-muted small">@DateTime.UtcNow.AddHours(6).ToString("dddd, dd MMMM yyyy")</span>
+</div>
 
+@* ---------- Work to do ---------- *@
+<div class="row g-3 mb-4">
+    <div class="col-sm-6 col-xl-3">
+        <a asp-controller="Orders" asp-action="Index" asp-route-status="Pending" class="text-decoration-none">
+            <div class="card stat-card shadow-sm h-100 border-start border-4 border-warning"><div class="card-body">
+                <div class="text-muted small">New orders to confirm</div>
+                <div class="display-6 text-dark">@Model.PendingOrders</div>
+            </div></div>
+        </a>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <a asp-controller="Orders" asp-action="Index" asp-route-status="Confirmed" class="text-decoration-none">
+            <div class="card stat-card shadow-sm h-100 border-start border-4 border-primary"><div class="card-body">
+                <div class="text-muted small">To pack (confirmed + packing)</div>
+                <div class="display-6 text-dark">@Model.ToPackOrders</div>
+            </div></div>
+        </a>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <a asp-controller="Orders" asp-action="Index" asp-route-status="Shipped" class="text-decoration-none">
+            <div class="card stat-card shadow-sm h-100 border-start border-4 border-info"><div class="card-body">
+                <div class="text-muted small">On the way (shipped)</div>
+                <div class="display-6 text-dark">@Model.ShippedOrders</div>
+            </div></div>
+        </a>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <a asp-controller="Inventory" asp-action="Index" asp-route-lowOnly="true" class="text-decoration-none">
+            <div class="card stat-card shadow-sm h-100 border-start border-4 border-danger"><div class="card-body">
+                <div class="text-muted small">Low stock items</div>
+                <div class="display-6 text-dark">@Model.LowStockItems.Count</div>
+            </div></div>
+        </a>
+    </div>
+</div>
+
+@* ---------- Sales ---------- *@
 <div class="row g-3 mb-4">
     <div class="col-sm-6 col-xl-3">
         <div class="card stat-card shadow-sm h-100"><div class="card-body">
-            <div class="text-muted small">Products</div>
-            <div class="display-6">@Model.TotalProducts</div>
-            <div class="small text-success">@Model.ActiveProducts active</div>
+            <div class="text-muted small">Today's orders</div>
+            <div class="display-6">@Model.TodayOrders</div>
         </div></div>
     </div>
     <div class="col-sm-6 col-xl-3">
         <div class="card stat-card shadow-sm h-100"><div class="card-body">
-            <div class="text-muted small">Categories</div>
-            <div class="display-6">@Model.TotalCategories</div>
+            <div class="text-muted small">Today's sales</div>
+            <div class="display-6">৳@Model.TodaySales.ToString("N0")</div>
         </div></div>
     </div>
     <div class="col-sm-6 col-xl-3">
         <div class="card stat-card shadow-sm h-100"><div class="card-body">
-            <div class="text-muted small">Orders</div>
-            <div class="display-6">@Model.TotalOrders</div>
+            <div class="text-muted small">This month's sales</div>
+            <div class="display-6">৳@Model.MonthSales.ToString("N0")</div>
         </div></div>
     </div>
     <div class="col-sm-6 col-xl-3">
         <div class="card stat-card shadow-sm h-100"><div class="card-body">
-            <div class="text-muted small">Customers / Staff</div>
-            <div class="display-6">@Model.TotalCustomers <span class="fs-5 text-muted">/ @Model.TotalStaff</span></div>
+            <div class="text-muted small">Products / Categories</div>
+            <div class="display-6">@Model.ActiveProducts <span class="fs-5 text-muted">/ @Model.TotalCategories</span></div>
+            @if (isAdmin)
+            {
+                <div class="small text-muted">@Model.TotalCustomers customers · @Model.TotalStaff staff</div>
+            }
         </div></div>
     </div>
 </div>
 
-<div class="card shadow-sm">
-    <div class="card-header bg-white d-flex justify-content-between align-items-center">
-        <strong>Low stock (@Model.LowStockThreshold or less)</strong>
-        <a asp-controller="Inventory" asp-action="Index" asp-route-lowOnly="true" class="btn btn-sm btn-outline-primary">Manage stock</a>
+<div class="row g-4">
+    @* ---------- Recent orders ---------- *@
+    <div class="col-xl-7">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <strong>Recent orders</strong>
+                <a asp-controller="Orders" asp-action="Index" class="btn btn-sm btn-outline-primary">All orders</a>
+            </div>
+            @if (!Model.RecentOrders.Any())
+            {
+                <div class="card-body text-muted">No orders yet.</div>
+            }
+            else
+            {
+                <table class="table mb-0 align-middle">
+                    <tbody>
+                        @foreach (var o in Model.RecentOrders)
+                        {
+                            <tr>
+                                <td>
+                                    <a asp-controller="Orders" asp-action="Details" asp-route-id="@o.Id" class="fw-semibold text-decoration-none">@o.OrderNumber</a>
+                                    <div class="small text-muted">@o.ShippingFullName · @OrderDisplay.Local(o.OrderDate).ToString("dd MMM, h:mm tt")</div>
+                                </td>
+                                <td class="text-end text-nowrap">৳ @o.Total.ToString("N0")</td>
+                                <td class="text-end"><span class="badge @OrderDisplay.Badge(o.Status)">@(o.Status == OrderStatus.Processing ? "Packing" : o.Status.ToString())</span></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
     </div>
-    @if (!Model.LowStockItems.Any())
-    {
-        <div class="card-body text-muted">All variants have enough stock.</div>
-    }
-    else
-    {
-        <table class="table mb-0 align-middle">
-            <thead class="table-light"><tr><th>Product</th><th>Size</th><th>Color</th><th class="text-end">Stock</th></tr></thead>
-            <tbody>
-                @foreach (var v in Model.LowStockItems)
-                {
-                    <tr>
-                        <td>@v.Product?.Name</td>
-                        <td>@v.Size</td>
-                        <td>@v.Color</td>
-                        <td class="text-end">
-                            <span class="badge @(v.StockQuantity == 0 ? "bg-danger" : "bg-warning text-dark")">@v.StockQuantity</span>
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-    }
+
+    @* ---------- Low stock ---------- *@
+    <div class="col-xl-5">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <strong>Low stock</strong>
+                <a asp-controller="Inventory" asp-action="Index" asp-route-lowOnly="true" class="btn btn-sm btn-outline-primary">Manage stock</a>
+            </div>
+            @if (!Model.LowStockItems.Any())
+            {
+                <div class="card-body text-muted">All items have enough stock. 👍</div>
+            }
+            else
+            {
+                <table class="table mb-0 align-middle">
+                    <tbody>
+                        @foreach (var v in Model.LowStockItems)
+                        {
+                            <tr>
+                                <td>
+                                    <div class="fw-semibold">@v.Product?.Name</div>
+                                    <div class="small text-muted">@v.Size / @v.Color</div>
+                                </td>
+                                <td class="text-end">
+                                    <span class="badge @(v.StockQuantity == 0 ? "bg-danger" : "bg-warning text-dark")">@v.StockQuantity left</span>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+    </div>
 </div>

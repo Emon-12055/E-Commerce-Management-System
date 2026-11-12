@@ -12,6 +12,7 @@ namespace ECommerceManagementSystem.Services
         decimal CalculateShipping(string? city);
         Task<PlaceOrderResult> PlaceOrderAsync(string userId, CheckoutViewModel form);
         Task<(bool Success, string Message)> CancelOrderAsync(int orderId, string? userId, string actingUserId, string reason);
+        Task<(bool Success, string Message)> UpdateStatusAsync(int orderId, OrderStatus newStatus, string actingUserId, string? note);
         string NewTransactionId();
     }
 
@@ -99,6 +100,7 @@ namespace ECommerceManagementSystem.Services
                         Color = v.Color,
                         ImageUrl = p.Images.OrderByDescending(i => i.IsMain).ThenBy(i => i.Id).FirstOrDefault()?.ImageUrl,
                         UnitPrice = unitPrice,
+                        UnitCost = p.CostPrice, // Phase 8: for profit reports
                         Quantity = item.Quantity,
                         LineTotal = unitPrice * item.Quantity
                     });
@@ -194,6 +196,91 @@ namespace ECommerceManagementSystem.Services
             return (true, wasPaid
                 ? $"Order {order.OrderNumber} cancelled. Your online payment will be refunded."
                 : $"Order {order.OrderNumber} cancelled.");
+        }
+
+        // ---------- Phase 7: order processing by Admin/Staff ----------
+
+        // Which status can come next (used for the buttons on the staff order page)
+        public static OrderStatus[] NextStatuses(OrderStatus current) => current switch
+        {
+            OrderStatus.Pending => new[] { OrderStatus.Confirmed, OrderStatus.Cancelled },
+            OrderStatus.Confirmed => new[] { OrderStatus.Processing, OrderStatus.Cancelled },
+            OrderStatus.Processing => new[] { OrderStatus.Shipped, OrderStatus.Cancelled },
+            OrderStatus.Shipped => new[] { OrderStatus.Delivered, OrderStatus.Returned },
+            OrderStatus.Delivered => new[] { OrderStatus.Returned },
+            _ => Array.Empty<OrderStatus>() // Cancelled / Returned: final
+        };
+
+        public async Task<(bool Success, string Message)> UpdateStatusAsync(int orderId, OrderStatus newStatus, string actingUserId, string? note)
+        {
+            var order = await _db.Orders
+                .Include(o => o.Items).ThenInclude(i => i.ProductVariant)
+                .Include(o => o.Payments)
+                .FirstOrDefaultAsync(o => o.Id == orderId);
+            if (order == null) return (false, "Order not found.");
+
+            if (!NextStatuses(order.Status).Contains(newStatus))
+                return (false, $"An order that is {order.Status} cannot be changed to {newStatus}.");
+
+            // Cancelling uses the same logic as customer cancel (puts stock back)
+            if (newStatus == OrderStatus.Cancelled)
+                return await CancelOrderAsync(orderId, null, actingUserId, string.IsNullOrWhiteSpace(note) ? "Cancelled by staff" : note!);
+
+            var payment = order.Payments.OrderByDescending(p => p.Id).FirstOrDefault();
+
+            // Online orders must be paid before they are confirmed
+            if (newStatus == OrderStatus.Confirmed && payment != null
+                && payment.Method != PaymentMethod.CashOnDelivery && payment.Status != PaymentStatus.Paid)
+                return (false, "This online order is not paid yet. Wait for the payment or cancel the order.");
+
+            switch (newStatus)
+            {
+                case OrderStatus.Shipped:
+                    order.ShippedAt = DateTime.UtcNow;
+                    break;
+
+                case OrderStatus.Delivered:
+                    order.DeliveredAt = DateTime.UtcNow;
+                    // Cash on Delivery: money is collected at delivery
+                    if (payment != null && payment.Method == PaymentMethod.CashOnDelivery && payment.Status == PaymentStatus.Pending)
+                    {
+                        payment.Status = PaymentStatus.Paid;
+                        payment.PaidAt = DateTime.UtcNow;
+                    }
+                    break;
+
+                case OrderStatus.Returned:
+                    // Items come back: put them in stock again
+                    foreach (var item in order.Items.Where(i => i.ProductVariant != null))
+                    {
+                        item.ProductVariant!.StockQuantity += item.Quantity;
+                        _db.Set<InventoryTransaction>().Add(new InventoryTransaction
+                        {
+                            ProductVariantId = item.ProductVariant.Id,
+                            ChangeType = InventoryChangeType.Return,
+                            QuantityChange = item.Quantity,
+                            StockAfter = item.ProductVariant.StockQuantity,
+                            OrderId = order.Id,
+                            Note = $"Order {order.OrderNumber} returned" + (string.IsNullOrWhiteSpace(note) ? "" : $": {note}"),
+                            CreatedByUserId = actingUserId,
+                            CreatedAt = DateTime.UtcNow
+                        });
+                    }
+                    if (payment != null && payment.Status == PaymentStatus.Paid)
+                        payment.Status = PaymentStatus.Refunded;
+                    break;
+            }
+
+            if (!string.IsNullOrWhiteSpace(note))
+            {
+                var line = $"[{DateTime.UtcNow.AddHours(6):dd MMM HH:mm}] {newStatus}: {note.Trim()}";
+                order.Notes = string.IsNullOrWhiteSpace(order.Notes) ? line : $"{order.Notes}\n{line}";
+                if (order.Notes.Length > 500) order.Notes = order.Notes[^500..];
+            }
+
+            order.Status = newStatus;
+            await _db.SaveChangesAsync();
+            return (true, $"Order {order.OrderNumber} is now {newStatus}.");
         }
 
         private async Task<string> NewOrderNumberAsync()

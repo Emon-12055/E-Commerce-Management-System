@@ -1,0 +1,63 @@
+@model List<InventoryHistoryRowViewModel>
+@{
+    if (ViewData["Title"] == null) ViewData["Title"] = "Stock history";
+
+    (string Text, string Css) TypeLabel(InventoryChangeType t) => t switch
+    {
+        InventoryChangeType.StockIn => ("Stock in", "bg-success"),
+        InventoryChangeType.Sale => ("Sale", "bg-primary"),
+        InventoryChangeType.Return => ("Return", "bg-info text-dark"),
+        InventoryChangeType.Adjustment => ("Adjustment", "bg-warning text-dark"),
+        InventoryChangeType.OrderCancelled => ("Order cancelled", "bg-secondary"),
+        _ => (t.ToString(), "bg-light text-dark")
+    };
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h4 mb-0">@ViewData["Title"]</h1>
+    <a asp-action="Index" class="btn btn-outline-secondary">Back to inventory</a>
+</div>
+
+<div class="card shadow-sm">
+    @if (!Model.Any())
+    {
+        <div class="card-body text-muted">No stock changes yet.</div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table mb-0 align-middle">
+                <thead class="table-light">
+                    <tr><th>Date</th><th>Product</th><th>Type</th><th class="text-end">Change</th><th class="text-end">Stock after</th><th>Order</th><th>Note</th><th>By</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var r in Model)
+                    {
+                        var t = TypeLabel(r.ChangeType);
+                        <tr>
+                            <td class="small text-nowrap">@OrderDisplay.Local(r.CreatedAt).ToString("dd MMM yyyy, h:mm tt")</td>
+                            <td>
+                                <div class="fw-semibold">@r.ProductName</div>
+                                <div class="small text-muted">@r.Size / @r.Color · @r.SKU</div>
+                            </td>
+                            <td><span class="badge @t.Css">@t.Text</span></td>
+                            <td class="text-end fw-bold @(r.QuantityChange >= 0 ? "text-success" : "text-danger")">
+                                @(r.QuantityChange > 0 ? "+" : "")@r.QuantityChange
+                            </td>
+                            <td class="text-end">@r.StockAfter</td>
+                            <td class="small">
+                                @if (r.OrderId.HasValue)
+                                {
+                                    <a asp-controller="Orders" asp-action="Details" asp-route-id="@r.OrderId">@r.OrderNumber</a>
+                                }
+                            </td>
+                            <td class="small text-muted">@r.Note</td>
+                            <td class="small">@r.UserName</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <div class="card-footer bg-white small text-muted">Showing the latest @Model.Count changes.</div>
+    }
+</div>

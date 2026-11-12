@@ -1,5 +1,4 @@
-﻿
-using ECommerceManagementSystem.Models;
+﻿using ECommerceManagementSystem.Models;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
@@ -22,6 +21,9 @@ namespace ECommerceManagementSystem.Data
         public DbSet<OrderItem> OrderItems { get; set; }
         public DbSet<Payment> Payments { get; set; }
         public DbSet<InventoryTransaction> InventoryTransactions { get; set; }
+
+        // Phase 8: business expenses for the profit report
+        public DbSet<Expense> Expenses { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -166,6 +168,16 @@ namespace ECommerceManagementSystem.Data
                 e.Property(t => t.ChangeType)
                  .HasConversion<string>()
                  .HasMaxLength(20);
+            });
+
+            // ---------- Expense (Phase 8) ----------
+            builder.Entity<Expense>(e =>
+            {
+                e.HasIndex(x => x.Date);
+
+                e.Property(x => x.Category)
+                 .HasConversion<string>()
+                 .HasMaxLength(30);
             });
         }
     }

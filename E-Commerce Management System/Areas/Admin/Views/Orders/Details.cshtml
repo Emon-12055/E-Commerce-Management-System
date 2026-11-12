@@ -1,0 +1,165 @@
+@model Order
+@{
+    ViewData["Title"] = $"Order {Model.OrderNumber}";
+    var next = (OrderStatus[])ViewBag.NextStatuses;
+    var payment = Model.Payments.OrderByDescending(p => p.Id).FirstOrDefault();
+
+    // Button text and color for each next status
+    (string Text, string Css, string Confirm) ButtonFor(OrderStatus s) => s switch
+    {
+        OrderStatus.Confirmed => ("✔ Confirm order", "btn-info", "Confirm this order?"),
+        OrderStatus.Processing => ("📦 Start packing", "btn-primary", "Mark as packing?"),
+        OrderStatus.Shipped => ("🚚 Mark as shipped", "btn-primary", "Mark as shipped?"),
+        OrderStatus.Delivered => ("🏠 Mark as delivered", "btn-success", "Mark as delivered? Cash on Delivery will be marked as paid."),
+        OrderStatus.Returned => ("↩ Mark as returned", "btn-outline-dark", "Mark as returned? Items will go back into stock."),
+        OrderStatus.Cancelled => ("✖ Cancel order", "btn-outline-danger", "Cancel this order? Items will go back into stock."),
+        _ => (s.ToString(), "btn-secondary", "Are you sure?")
+    };
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+    <div>
+        <a asp-action="Index" class="small text-decoration-none">&larr; All orders</a>
+        <h1 class="h3 mb-1">Order @Model.OrderNumber</h1>
+        <div class="small text-muted">Placed @OrderDisplay.Local(Model.OrderDate).ToString("dd MMM yyyy, h:mm tt")</div>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+        <span class="badge fs-6 @OrderDisplay.Badge(Model.Status)">@(Model.Status == OrderStatus.Processing ? "Packing" : Model.Status.ToString())</span>
+        <a asp-action="Invoice" asp-route-id="@Model.Id" target="_blank" class="btn btn-outline-secondary btn-sm">🖨 Invoice</a>
+    </div>
+</div>
+
+@* ---------- Status update ---------- *@
+<div class="card shadow-sm mb-4 border-primary">
+    <div class="card-body">
+        <h2 class="h6 fw-bold mb-2">Update status</h2>
+        @if (!next.Any())
+        {
+            <div class="text-muted">This order is @Model.Status.ToString().ToLower(). No more changes are possible.</div>
+        }
+        else
+        {
+            <form asp-action="UpdateStatus" asp-route-id="@Model.Id" method="post" id="statusForm">
+                <div class="mb-2">
+                    <input type="text" name="note" class="form-control" maxlength="200"
+                           placeholder="Note (optional), e.g. courier name and tracking number, or reason for cancel" />
+                </div>
+                <div class="d-flex flex-wrap gap-2">
+                    @foreach (var s in next)
+                    {
+                        var b = ButtonFor(s);
+                        <button type="submit" name="newStatus" value="@s" class="btn @b.Css"
+                                onclick="return confirm('@b.Confirm');">@b.Text</button>
+                    }
+                </div>
+            </form>
+
+            @if (Model.Status == OrderStatus.Pending && payment != null
+                 && payment.Method != PaymentMethod.CashOnDelivery && payment.Status != PaymentStatus.Paid)
+            {
+                <div class="alert alert-warning small mt-3 mb-0">This is an online order and it is <strong>not paid yet</strong>. You can confirm it only after payment.</div>
+            }
+        }
+    </div>
+</div>
+
+<div class="row g-4">
+    @* ---------- Items ---------- *@
+    <div class="col-lg-8">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white"><strong>Items to pack</strong></div>
+            <table class="table align-middle mb-0">
+                <thead class="table-light">
+                    <tr><th></th><th>Product</th><th>SKU</th><th>Size / Color</th><th class="text-center">Qty</th><th class="text-end">Total</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model.Items)
+                    {
+                        <tr>
+                            <td>
+                                @if (!string.IsNullOrEmpty(item.ImageUrl))
+                                {
+                                    <img src="@item.ImageUrl" alt="" class="thumb" />
+                                }
+                            </td>
+                            <td class="fw-semibold">@item.ProductName</td>
+                            <td class="small text-muted">@item.SKU</td>
+                            <td>@item.Size / @item.Color</td>
+                            <td class="text-center fw-bold">@item.Quantity</td>
+                            <td class="text-end text-nowrap">৳ @item.LineTotal.ToString("N0")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            <div class="card-body border-top">
+                <div class="d-flex justify-content-between"><span>Subtotal</span><span>৳ @Model.SubTotal.ToString("N0")</span></div>
+                <div class="d-flex justify-content-between"><span>Shipping</span><span>৳ @Model.ShippingCost.ToString("N0")</span></div>
+                @if (Model.Discount > 0)
+                {
+                    <div class="d-flex justify-content-between"><span>Discount</span><span>- ৳ @Model.Discount.ToString("N0")</span></div>
+                }
+                <div class="d-flex justify-content-between fs-5 fw-bold"><span>Total</span><span>৳ @Model.Total.ToString("N0")</span></div>
+            </div>
+        </div>
+    </div>
+
+    @* ---------- Customer, delivery, payment ---------- *@
+    <div class="col-lg-4">
+        <div class="card shadow-sm mb-3">
+            <div class="card-body">
+                <h2 class="h6 fw-bold">Deliver to</h2>
+                <div class="fw-semibold">@Model.ShippingFullName</div>
+                <div><a href="tel:@Model.ShippingPhone">@Model.ShippingPhone</a></div>
+                <div class="small text-muted">@Model.ShippingAddressLine, @Model.ShippingCity @Model.ShippingPostalCode</div>
+                @if (Model.User != null)
+                {
+                    <div class="small text-muted mt-2">Account: @Model.User.Email</div>
+                }
+            </div>
+        </div>
+
+        @if (payment != null)
+        {
+            <div class="card shadow-sm mb-3">
+                <div class="card-body">
+                    <h2 class="h6 fw-bold">Payment</h2>
+                    <div>@OrderDisplay.Label(payment.Method)</div>
+                    <span class="badge @OrderDisplay.Badge(payment.Status)">@payment.Status</span>
+                    @if (!string.IsNullOrEmpty(payment.TransactionId))
+                    {
+                        <div class="small text-muted mt-1">Transaction: @payment.TransactionId</div>
+                    }
+                    @if (payment.Method == PaymentMethod.CashOnDelivery && payment.Status == PaymentStatus.Pending)
+                    {
+                        <div class="small mt-1">Collect <strong>৳ @Model.Total.ToString("N0")</strong> in cash on delivery.</div>
+                    }
+                    @if (payment.Status == PaymentStatus.Refunded)
+                    {
+                        <div class="small text-danger mt-1">Refund needed / refunded to customer.</div>
+                    }
+                </div>
+            </div>
+        }
+
+        <div class="card shadow-sm">
+            <div class="card-body small">
+                <h2 class="h6 fw-bold">Timeline</h2>
+                <div>Placed: @OrderDisplay.Local(Model.OrderDate).ToString("dd MMM, h:mm tt")</div>
+                @if (Model.ShippedAt.HasValue)
+                {
+                    <div>Shipped: @OrderDisplay.Local(Model.ShippedAt.Value).ToString("dd MMM, h:mm tt")</div>
+                }
+                @if (Model.DeliveredAt.HasValue)
+                {
+                    <div>Delivered: @OrderDisplay.Local(Model.DeliveredAt.Value).ToString("dd MMM, h:mm tt")</div>
+                }
+                @if (!string.IsNullOrWhiteSpace(Model.Notes))
+                {
+                    <hr />
+                    <div class="fw-semibold">Notes</div>
+                    <div style="white-space:pre-line">@Model.Notes</div>
+                }
+            </div>
+        </div>
+    </div>
+</div>

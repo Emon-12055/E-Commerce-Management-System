@@ -1,0 +1,40 @@
+@model DateRangeViewModel
+@{
+    var today = DateTime.UtcNow.AddHours(6).Date;
+    var thisMonth = new DateTime(today.Year, today.Month, 1);
+    var lastMonth = thisMonth.AddMonths(-1);
+    var presets = new (string Label, DateTime From, DateTime To)[]
+    {
+        ("Today", today, today),
+        ("This month", thisMonth, today),
+        ("Last month", lastMonth, thisMonth.AddDays(-1)),
+        ("Last 30 days", today.AddDays(-29), today),
+        ("This year", new DateTime(today.Year, 1, 1), today)
+    };
+}
+
+<div class="card shadow-sm mb-4">
+    <div class="card-body">
+        <form method="get" asp-action="@Model.Action" class="row g-2 align-items-end">
+            <div class="col-auto">
+                <label class="form-label small mb-1">From</label>
+                <input type="date" name="from" value="@Model.From.ToString("yyyy-MM-dd")" class="form-control" />
+            </div>
+            <div class="col-auto">
+                <label class="form-label small mb-1">To</label>
+                <input type="date" name="to" value="@Model.To.ToString("yyyy-MM-dd")" class="form-control" />
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-primary">Show</button>
+            </div>
+            <div class="col d-flex flex-wrap gap-1 justify-content-lg-end">
+                @foreach (var p in presets)
+                {
+                    bool active = p.From == Model.From && p.To == Model.To;
+                    <a asp-action="@Model.Action" asp-route-from="@p.From.ToString("yyyy-MM-dd")" asp-route-to="@p.To.ToString("yyyy-MM-dd")"
+                       class="btn btn-sm @(active ? "btn-dark" : "btn-outline-secondary")">@p.Label</a>
+                }
+            </div>
+        </form>
+    </div>
+</div>

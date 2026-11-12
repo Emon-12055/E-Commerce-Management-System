@@ -1,21 +1,23 @@
 @model List<ProductVariant>
 @{
     ViewData["Title"] = "Inventory";
-    int threshold = ViewBag.Threshold;
     bool lowOnly = ViewBag.LowOnly;
     string? search = ViewBag.Search;
 }
 
-<h1 class="h3 mb-3">Inventory / Stock</h1>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3 mb-0">Inventory / Stock</h1>
+    <a asp-action="History" class="btn btn-outline-secondary">📜 Stock history</a>
+</div>
 
 <form method="get" class="row g-2 mb-3 align-items-center">
     <div class="col-md-5">
-        <input type="text" name="search" value="@search" class="form-control" placeholder="Search product, size or color..." />
+        <input type="text" name="search" value="@search" class="form-control" placeholder="Search product, SKU, size or color..." />
     </div>
     <div class="col-md-3">
         <div class="form-check">
             <input class="form-check-input" type="checkbox" name="lowOnly" value="true" id="lowOnly" checked="@lowOnly" />
-            <label class="form-check-label" for="lowOnly">Only low stock (≤ @threshold)</label>
+            <label class="form-check-label" for="lowOnly">Only low stock</label>
         </div>
     </div>
     <div class="col-md-4 d-flex gap-2">
@@ -23,6 +25,12 @@
         <a asp-action="Index" class="btn btn-outline-secondary">Clear</a>
     </div>
 </form>
+
+<div class="alert alert-light border small">
+    <strong>Add</strong> = new stock arrived (adds to the current stock).
+    <strong>Set</strong> = correct the stock after counting (replaces the current stock).
+    Every change is saved in <a asp-action="History">Stock history</a>.
+</div>
 
 <div class="card shadow-sm">
     @if (!Model.Any())
@@ -34,28 +42,37 @@
         <div class="table-responsive">
             <table class="table mb-0 align-middle">
                 <thead class="table-light">
-                    <tr><th>Product</th><th>Size</th><th>Color</th><th class="text-center">Current</th><th style="width:260px">Set new stock</th></tr>
+                    <tr><th>Product</th><th>SKU</th><th>Size / Color</th><th class="text-center">Stock</th><th style="min-width:340px">Change stock</th><th></th></tr>
                 </thead>
                 <tbody>
                     @foreach (var v in Model)
                     {
                         var badge = v.StockQuantity == 0 ? "bg-danger"
-                                  : v.StockQuantity <= threshold ? "bg-warning text-dark"
+                                  : v.StockQuantity <= v.LowStockThreshold ? "bg-warning text-dark"
                                   : "bg-success";
-                        <tr>
-                            <td class="fw-semibold">@v.Product?.Name</td>
-                            <td>@v.Size</td>
-                            <td>@v.Color</td>
-                            <td class="text-center"><span class="badge @badge">@v.StockQuantity</span></td>
+                        <tr class="@(v.IsActive ? "" : "text-muted")">
+                            <td class="fw-semibold">
+                                @v.Product?.Name
+                                @if (!v.IsActive) { <span class="badge bg-light text-dark border ms-1">Hidden</span> }
+                            </td>
+                            <td class="small text-muted">@v.SKU</td>
+                            <td>@v.Size / @v.Color</td>
+                            <td class="text-center">
+                                <span class="badge fs-6 @badge">@v.StockQuantity</span>
+                                <div class="small text-muted">low at @v.LowStockThreshold</div>
+                            </td>
                             <td>
-                                <form asp-action="Update" method="post" class="d-flex gap-2">
+                                <form asp-action="Update" method="post" class="d-flex gap-1">
                                     <input type="hidden" name="variantId" value="@v.Id" />
                                     <input type="hidden" name="search" value="@search" />
                                     <input type="hidden" name="lowOnly" value="@lowOnly.ToString().ToLower()" />
-                                    <input type="number" name="quantity" min="0" value="@v.StockQuantity" class="form-control form-control-sm" required />
-                                    <button type="submit" class="btn btn-sm btn-primary">Save</button>
+                                    <input type="number" name="quantity" min="0" class="form-control form-control-sm" style="width:80px" placeholder="Qty" required />
+                                    <input type="text" name="note" class="form-control form-control-sm" placeholder="Note (optional)" maxlength="200" />
+                                    <button type="submit" name="mode" value="add" class="btn btn-sm btn-success" title="Add to stock">Add</button>
+                                    <button type="submit" name="mode" value="set" class="btn btn-sm btn-outline-primary" title="Set exact stock">Set</button>
                                 </form>
                             </td>
+                            <td><a asp-action="History" asp-route-variantId="@v.Id" class="btn btn-sm btn-link">History</a></td>
                         </tr>
                     }
                 </tbody>

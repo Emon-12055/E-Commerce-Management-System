@@ -115,6 +115,10 @@ namespace ECommerceManagementSystem.Models
         [Column(TypeName = "decimal(18,2)")]
         public decimal? CompareAtPrice { get; set; }
 
+        // Phase 8: what you paid for one piece (used for profit reports)
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal? CostPrice { get; set; }
+
         public bool IsActive { get; set; } = true;
         public bool IsFeatured { get; set; }
 
@@ -331,6 +335,10 @@ namespace ECommerceManagementSystem.Models
 
         [Column(TypeName = "decimal(18,2)")]
         public decimal UnitPrice { get; set; }
+
+        // Phase 8: cost price at the time of the order (used for profit reports)
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal? UnitCost { get; set; }
 
         [Range(1, 100)]
         public int Quantity { get; set; }

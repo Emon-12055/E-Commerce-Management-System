@@ -1,0 +1,138 @@
+@model ProfitReportViewModel
+@{
+    ViewData["Title"] = "Profit report";
+    string Money(decimal v) => (v < 0 ? "- ৳" : "৳") + Math.Abs(v).ToString("N0");
+    string Color(decimal v) => v < 0 ? "text-danger" : "text-success";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3 mb-0">Profit report</h1>
+    <div class="d-flex gap-2">
+        <a asp-action="Sales" asp-route-from="@Model.Range.From.ToString("yyyy-MM-dd")" asp-route-to="@Model.Range.To.ToString("yyyy-MM-dd")"
+           class="btn btn-outline-primary">&larr; Sales report</a>
+        <a asp-controller="Expenses" asp-action="Index" class="btn btn-outline-secondary">Manage expenses</a>
+    </div>
+</div>
+
+<partial name="_DateRange" model="Model.Range" />
+
+@if (Model.ItemsWithoutCost > 0)
+{
+    <div class="alert alert-warning">
+        <strong>@Model.ItemsWithoutCost sold item(s) have no cost price</strong>, so their cost is counted as ৳0 and profit looks higher than it really is.
+        Add a <strong>Cost price</strong> to your products in <a asp-controller="Products" asp-action="Index">Products</a>.
+    </div>
+}
+
+@* ---------- Key numbers ---------- *@
+<div class="row g-3 mb-4">
+    <div class="col-sm-6 col-xl-3"><div class="card stat-card shadow-sm h-100"><div class="card-body">
+        <div class="text-muted small">Net sales</div>
+        <div class="display-6">@Money(Model.NetSales)</div>
+    </div></div></div>
+    <div class="col-sm-6 col-xl-3"><div class="card stat-card shadow-sm h-100"><div class="card-body">
+        <div class="text-muted small">Gross profit</div>
+        <div class="display-6 @Color(Model.GrossProfit)">@Money(Model.GrossProfit)</div>
+        <div class="small text-muted">Margin @Model.GrossMargin.ToString("0.0")%</div>
+    </div></div></div>
+    <div class="col-sm-6 col-xl-3"><div class="card stat-card shadow-sm h-100"><div class="card-body">
+        <div class="text-muted small">Expenses</div>
+        <div class="display-6">@Money(Model.TotalExpenses)</div>
+    </div></div></div>
+    <div class="col-sm-6 col-xl-3"><div class="card stat-card shadow-sm h-100 border-start border-4 @(Model.NetProfit < 0 ? "border-danger" : "border-success")"><div class="card-body">
+        <div class="text-muted small">Net profit</div>
+        <div class="display-6 @Color(Model.NetProfit)">@Money(Model.NetProfit)</div>
+        <div class="small text-muted">Margin @Model.NetMargin.ToString("0.0")%</div>
+    </div></div></div>
+</div>
+
+<div class="row g-4 mb-4">
+    @* ---------- Profit & loss statement ---------- *@
+    <div class="col-lg-7">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-white"><strong>Profit &amp; loss</strong> <span class="small text-muted">@Model.Range.From.ToString("dd MMM yyyy") – @Model.Range.To.ToString("dd MMM yyyy")</span></div>
+            <table class="table mb-0">
+                <tbody>
+                    <tr><td>Product sales</td><td class="text-end">@Money(Model.ProductSales)</td></tr>
+                    <tr><td class="ps-4 text-muted">Less: discounts</td><td class="text-end text-muted">@Money(-Model.Discounts)</td></tr>
+                    <tr class="fw-semibold"><td>Net sales</td><td class="text-end">@Money(Model.NetSales)</td></tr>
+                    <tr><td class="ps-4 text-muted">Less: cost of goods sold (cost price × qty)</td><td class="text-end text-muted">@Money(-Model.Cogs)</td></tr>
+                    <tr class="fw-semibold table-light"><td>Gross profit</td><td class="text-end @Color(Model.GrossProfit)">@Money(Model.GrossProfit)</td></tr>
+                    <tr><td class="ps-4 text-muted">Add: shipping charged to customers</td><td class="text-end text-muted">@Money(Model.ShippingIncome)</td></tr>
+                    <tr><td class="ps-4 text-muted">Less: expenses</td><td class="text-end text-muted">@Money(-Model.TotalExpenses)</td></tr>
+                    <tr class="fw-bold fs-5 table-light"><td>Net profit</td><td class="text-end @Color(Model.NetProfit)">@Money(Model.NetProfit)</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    @* ---------- Expenses by category ---------- *@
+    <div class="col-lg-5">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <strong>Expenses by category</strong>
+                <a asp-controller="Expenses" asp-action="Create" class="btn btn-sm btn-outline-primary">+ Add expense</a>
+            </div>
+            <table class="table mb-0">
+                <tbody>
+                    @foreach (var r in Model.ExpensesByCategory)
+                    {
+                        <tr><td>@r.Name <span class="text-muted small">(@r.Count)</span></td><td class="text-end">@Money(r.Amount)</td></tr>
+                    }
+                    @if (!Model.ExpensesByCategory.Any())
+                    {
+                        <tr><td class="text-muted">No expenses recorded in this period.</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@* ---------- Monthly ---------- *@
+@if (Model.Monthly.Count > 1)
+{
+    <div class="card shadow-sm">
+        <div class="card-header bg-white"><strong>Month by month</strong></div>
+        <div class="table-responsive">
+            <table class="table mb-0 align-middle">
+                <thead class="table-light">
+                    <tr><th>Month</th><th class="text-end">Net sales</th><th class="text-end">Cost of goods</th><th class="text-end">Gross profit</th>
+                        <th class="text-end">Shipping</th><th class="text-end">Expenses</th><th class="text-end">Net profit</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var m in Model.Monthly)
+                    {
+                        <tr>
+                            <td class="fw-semibold">@m.Label</td>
+                            <td class="text-end">@Money(m.NetSales)</td>
+                            <td class="text-end text-muted">@Money(m.Cogs)</td>
+                            <td class="text-end">@Money(m.GrossProfit)</td>
+                            <td class="text-end text-muted">@Money(m.ShippingIncome)</td>
+                            <td class="text-end text-muted">@Money(m.Expenses)</td>
+                            <td class="text-end fw-bold @Color(m.NetProfit)">@Money(m.NetProfit)</td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot class="table-light fw-bold">
+                    <tr>
+                        <td>Total</td>
+                        <td class="text-end">@Money(Model.Monthly.Sum(m => m.NetSales))</td>
+                        <td class="text-end">@Money(Model.Monthly.Sum(m => m.Cogs))</td>
+                        <td class="text-end">@Money(Model.Monthly.Sum(m => m.GrossProfit))</td>
+                        <td class="text-end">@Money(Model.Monthly.Sum(m => m.ShippingIncome))</td>
+                        <td class="text-end">@Money(Model.Monthly.Sum(m => m.Expenses))</td>
+                        <td class="text-end @Color(Model.Monthly.Sum(m => m.NetProfit))">@Money(Model.Monthly.Sum(m => m.NetProfit))</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+}
+
+<p class="small text-muted mt-3">
+    How it is calculated: <strong>Net sales</strong> = product sales − discounts.
+    <strong>Gross profit</strong> = net sales − (cost price × quantity sold).
+    <strong>Net profit</strong> = gross profit + shipping charged − expenses.
+    Cancelled and returned orders are not counted.
+</p>

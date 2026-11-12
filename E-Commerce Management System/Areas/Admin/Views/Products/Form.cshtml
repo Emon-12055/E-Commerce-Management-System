@@ -24,10 +24,15 @@
                     <input asp-for="Name" class="form-control" />
                     <span asp-validation-for="Name" class="text-danger small"></span>
                 </div>
-                <div class="col-md-4">
-                    <label asp-for="Price" class="form-label">Price (৳)</label>
+                <div class="col-md-2">
+                    <label asp-for="Price" class="form-label">Selling price (৳)</label>
                     <input asp-for="Price" class="form-control" step="0.01" min="0" />
                     <span asp-validation-for="Price" class="text-danger small"></span>
+                </div>
+                <div class="col-md-2">
+                    <label asp-for="CostPrice" class="form-label">Cost price (৳)</label>
+                    <input asp-for="CostPrice" class="form-control" step="0.01" min="0" placeholder="for profit" />
+                    <span asp-validation-for="CostPrice" class="text-danger small"></span>
                 </div>
                 <div class="col-md-6">
                     <label asp-for="CategoryId" class="form-label"></label>

@@ -81,6 +81,7 @@ namespace ECommerceManagementSystem.Areas.Admin.Controllers
                 Description = vm.Description?.Trim(),
                 Slug = await MakeUniqueSlugAsync(vm.Name),
                 BasePrice = vm.Price,
+                CostPrice = vm.CostPrice,
                 CategoryId = vm.CategoryId!.Value,
                 IsActive = vm.IsActive
             };
@@ -106,6 +107,7 @@ namespace ECommerceManagementSystem.Areas.Admin.Controllers
                 Name = product.Name,
                 Description = product.Description,
                 Price = product.BasePrice,
+                CostPrice = product.CostPrice,
                 CategoryId = product.CategoryId,
                 IsActive = product.IsActive
             };
@@ -133,6 +135,7 @@ namespace ECommerceManagementSystem.Areas.Admin.Controllers
             product.Name = vm.Name.Trim();
             product.Description = vm.Description?.Trim();
             product.BasePrice = vm.Price;
+            product.CostPrice = vm.CostPrice;
             product.UpdatedAt = DateTime.UtcNow;
             product.CategoryId = vm.CategoryId!.Value;
             product.IsActive = vm.IsActive;

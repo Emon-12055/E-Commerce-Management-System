@@ -1,0 +1,90 @@
+@model Order
+@{
+    Layout = null; // printable page without the admin sidebar
+    var payment = Model.Payments.OrderByDescending(p => p.Id).FirstOrDefault();
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>Invoice @Model.OrderNumber</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <style>
+        body { padding: 2rem; max-width: 800px; margin: auto; }
+        @@media print { .no-print { display: none; } body { padding: 0; } }
+    </style>
+</head>
+<body>
+    <div class="no-print mb-3 d-flex gap-2">
+        <button onclick="window.print()" class="btn btn-dark">🖨 Print</button>
+        <button onclick="window.close()" class="btn btn-outline-secondary">Close</button>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-start mb-4">
+        <div>
+            <h1 class="h3 mb-0">E-Commerce Management System</h1>
+            <div class="text-muted small">Invoice / Packing slip</div>
+        </div>
+        <div class="text-end">
+            <div class="fw-bold">@Model.OrderNumber</div>
+            <div class="small">@OrderDisplay.Local(Model.OrderDate).ToString("dd MMM yyyy")</div>
+            <div class="small">Status: @Model.Status</div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-6">
+            <div class="fw-bold small text-uppercase text-muted">Deliver to</div>
+            <div class="fw-semibold">@Model.ShippingFullName</div>
+            <div>@Model.ShippingPhone</div>
+            <div>@Model.ShippingAddressLine</div>
+            <div>@Model.ShippingCity @Model.ShippingPostalCode</div>
+        </div>
+        <div class="col-6 text-end">
+            <div class="fw-bold small text-uppercase text-muted">Payment</div>
+            @if (payment != null)
+            {
+                <div>@OrderDisplay.Label(payment.Method)</div>
+                <div>@payment.Status</div>
+            }
+        </div>
+    </div>
+
+    <table class="table table-bordered">
+        <thead class="table-light">
+            <tr><th>#</th><th>Product</th><th>SKU</th><th>Size / Color</th><th class="text-end">Price</th><th class="text-center">Qty</th><th class="text-end">Total</th></tr>
+        </thead>
+        <tbody>
+            @{ int n = 1; }
+            @foreach (var item in Model.Items)
+            {
+                <tr>
+                    <td>@(n++)</td>
+                    <td>@item.ProductName</td>
+                    <td class="small">@item.SKU</td>
+                    <td>@item.Size / @item.Color</td>
+                    <td class="text-end">@item.UnitPrice.ToString("N0")</td>
+                    <td class="text-center">@item.Quantity</td>
+                    <td class="text-end">@item.LineTotal.ToString("N0")</td>
+                </tr>
+            }
+        </tbody>
+        <tfoot>
+            <tr><td colspan="6" class="text-end">Subtotal</td><td class="text-end">৳ @Model.SubTotal.ToString("N0")</td></tr>
+            <tr><td colspan="6" class="text-end">Shipping</td><td class="text-end">৳ @Model.ShippingCost.ToString("N0")</td></tr>
+            @if (Model.Discount > 0)
+            {
+                <tr><td colspan="6" class="text-end">Discount</td><td class="text-end">- ৳ @Model.Discount.ToString("N0")</td></tr>
+            }
+            <tr class="fw-bold"><td colspan="6" class="text-end">Total</td><td class="text-end">৳ @Model.Total.ToString("N0")</td></tr>
+        </tfoot>
+    </table>
+
+    @if (payment != null && payment.Method == PaymentMethod.CashOnDelivery && payment.Status != PaymentStatus.Paid)
+    {
+        <div class="alert alert-warning">Collect <strong>৳ @Model.Total.ToString("N0")</strong> in cash on delivery.</div>
+    }
+
+    <p class="text-muted small mt-4">Thank you for shopping with us!</p>
+</body>
+</html>

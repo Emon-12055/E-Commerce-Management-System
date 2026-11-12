@@ -27,6 +27,7 @@
 
             <ul class="nav flex-column gap-1">
                 <li><a class="nav-link @Active("Dashboard")" asp-area="Admin" asp-controller="Dashboard" asp-action="Index">Dashboard</a></li>
+                <li><a class="nav-link @Active("Orders")" asp-area="Admin" asp-controller="Orders" asp-action="Index">Orders</a></li>
 
                 @if (User.IsInRole("Admin"))
                 {
@@ -40,6 +41,11 @@
                 {
                     @* Staff management was built in Phase 3 (StaffController, outside the Admin area) *@
                     <li><a class="nav-link @Active("Staff")" asp-area="" asp-controller="Staff" asp-action="Index">Staff accounts</a></li>
+
+                    <li class="mt-3 small text-uppercase text-secondary px-2">Reports</li>
+                    <li><a class="nav-link @(current == "Reports" && ViewContext.RouteData.Values["action"]?.ToString() == "Sales" ? "active" : "")" asp-area="Admin" asp-controller="Reports" asp-action="Sales">Sales report</a></li>
+                    <li><a class="nav-link @(current == "Reports" && ViewContext.RouteData.Values["action"]?.ToString() == "Profit" ? "active" : "")" asp-area="Admin" asp-controller="Reports" asp-action="Profit">Profit report</a></li>
+                    <li><a class="nav-link @Active("Expenses")" asp-area="Admin" asp-controller="Expenses" asp-action="Index">Expenses</a></li>
                 }
             </ul>
 
